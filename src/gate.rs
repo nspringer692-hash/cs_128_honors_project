@@ -8,6 +8,7 @@ pub static GLOBAL_ID: Mutex<i32> = Mutex::new(0);
 //all the type of gates
 #[derive(Component)]
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum GateType {
     NAND,
     NOR,
@@ -23,6 +24,7 @@ pub enum GateType {
 
 #[derive(Component)]
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct Gate {
     pub kind: GateType,
     pub input_states: Vec<bool>,
@@ -32,7 +34,9 @@ pub struct Gate {
 
 
 impl Gate {
-    //create a new gete, this can be used when a gate is dragged into the "field"
+    // create a new gete, this can be used when a gate is dragged into the "field"
+    // each gate gets an id, this is for later, to tell which gate to take away when clearing it from the "playarea"
+    // this is made from a global variable that increases each time a new gate is introduced
     pub fn new(kind: GateType, input_amount: usize) -> Self {
         let id = {
             let mut guard = GLOBAL_ID.lock().unwrap();
