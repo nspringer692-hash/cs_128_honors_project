@@ -1,6 +1,9 @@
 use bevy::prelude::*;
-use crate::Draggable;
 use crate::snap_to_grid;
+
+// Needs to access Draggable
+use crate::components::*;
+
 
 #[derive(Component, Default)]
 pub struct GateId(pub i32);
