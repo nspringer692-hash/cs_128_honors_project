@@ -6,6 +6,8 @@ use bevy::{input_focus::InputFocus};
 use crate::gate::*;
 use crate::textures::*;
 use crate::components::*;
+use crate::block::*;
+use crate::circuit::*;
 
 // Declare colors to represent the state of the CurrentStat button
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
@@ -76,7 +78,6 @@ pub fn spawn_grid(commands: &mut Commands) {
         y += spacing;
     }
 }
-
 
 //Helper function, creates said object, a movable gate, usually.
 pub fn spawn_block(commands: &mut Commands, pos: Vec3, textures: &Textures) {
@@ -160,7 +161,8 @@ pub fn delete_on_right_click(
     mouse: Res<ButtonInput<MouseButton>>, // Read mouse's input
     windows: Query<&Window>, 
     cameras: Query<(&Camera, &GlobalTransform)>,
-    query: Query<(Entity, &Transform), With<Draggable>>,
+    query: Query<(Entity, &Transform, &GateId), With<Draggable>>,
+    mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     // If mouse is not right clicking, ignore
     if !mouse.just_pressed(MouseButton::Right) {
@@ -173,13 +175,14 @@ pub fn delete_on_right_click(
     };
 
     // Loop through each entity in the world
-    for (entity, transform) in &query {
+    for (entity, transform, gate_id) in &query {
         // Get the distance from the entity
         let dist = transform.translation.truncate().distance(cursor_pos);
 
         // If this entity is the closest to the mouse, delete it
         if dist < 50.0 {
             commands.entity(entity).despawn();
+            active_circuit.0.remove_gate(gate_id.0);
             break; // delete only one
         }
     }
@@ -279,7 +282,8 @@ pub fn user_interface(
     state: Res<State<GameState>>, // Read what state the game is currently in
     mut next_state: ResMut<NextState<GameState>>, // What state to change to next frame?
     mut message_writer: MessageWriter<SpawnGateEvent>,
-    mut popup: ResMut<PopupState>
+    mut popup: ResMut<PopupState>,
+    mut commands: Commands,
 ) -> Result {
     let ctx = contexts.ctx_mut()?; // Get access to bevy_egui's internal state
 
@@ -352,7 +356,7 @@ pub fn user_interface(
             // Create new draggable window for user to add gates
             // WIP
             egui::Window::new("Components").show(ctx, |ui| {
-                let mut current_level = crate::circuit::Circuit::new(0, 5);
+                // let mut current_level = crate::circuit::Circuit::new(0, 5);
                 if ui // NAND
                     .add_sized([60.0, 30.0], egui::Button::new("NAND"))
                     .clicked()
@@ -361,10 +365,20 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::NAND,
                     });
-                    current_level.add_gate(GateType::NAND);
-                    for i in 0..current_level.gates.len() {
-                        println!("{:?}", current_level.gates[i]);
-                    }
+
+                    // //spawning in the block and adding the gate to the circuit, continued for all gate types
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::NAND);
+                    
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+                    
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
                     
                 }
 
@@ -373,33 +387,71 @@ pub fn user_interface(
                     .clicked()
                 {
 
-                    println!("Request NOR gate");
-                    current_level.add_gate(GateType::NOR);
-                    for i in 0..current_level.gates.len() {
-                        println!("{:?}", current_level.gates[i]);
-                    }
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::NOR,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::NOR);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
+
                 }
 
                 if ui // AND (placeholder)
                     .add_sized([60.0, 30.0], egui::Button::new("AND"))
                     .clicked()
                 {
-                    println!("Request AND gate");
-                    current_level.add_gate(GateType::NAND);
-                    for i in 0..current_level.gates.len() {
-                        println!("{:?}", current_level.gates[i]);
-                    }
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::AND,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::NAND);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
+
                 }
 
                 if ui // OR (placeholder)
                     .add_sized([60.0, 30.0], egui::Button::new("OR"))
                     .clicked()
                 {
-                    println!("Request OR gate");
-                    current_level.add_gate(GateType::OR);
-                    for i in 0..current_level.gates.len() {
-                        println!("{:?}", current_level.gates[i]);
-                    }
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::OR,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::OR);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
 
                 }
             });
@@ -459,7 +511,6 @@ pub fn button_system(
     {
         let mut text = text_query.get_mut(children[0]).unwrap();
 
-
         match *interaction {
             Interaction::Pressed => {
                 input_focus.set(entity);
@@ -493,7 +544,6 @@ pub fn button_system(
         }
     }
 }
-
 
 //use this function to make a button that can be placed in the x_pos, and set its size
 pub fn button(asset_server: &AssetServer, x_pos: f32, y_pos: f32, width: u32, height: u32) -> impl Bundle {
@@ -536,28 +586,225 @@ pub fn button(asset_server: &AssetServer, x_pos: f32, y_pos: f32, width: u32, he
     )
 }
 
+// Spawn a gate and add it to the backend when a gate is passed from the gate spawn button
 pub fn handle_spawn_gate(
     mut commands: Commands,
     mut events: MessageReader<SpawnGateEvent>,
-    textures: Res<Textures>
+    textures: Res<Textures>,
+    mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     for event in events.read() {
-        match event.gate_type {
-            GateType::NAND => {
-                spawn_block(&mut commands, event.position, &textures);
+
+        // Add gate to backend
+        active_circuit.0.add_gate(event.gate_type.clone());
+
+        // Get ID of newly created gate
+        let gate_id = active_circuit.0.gates.last().unwrap().id;
+
+        // Spawn visual using BlockBundle
+        commands.spawn(BlockBundle::new(
+            event.position,
+            textures.gate.clone(),
+            gate_id,
+        ))
+        .with_children(|parent| {
+        // First port
+        parent.spawn((
+            Sprite {
+                image: textures.port.clone(),
+                color: Color::srgb(1.0, 0.3, 0.3),
+                custom_size: Some(Vec2::splat(10.0)),
+                ..default()
+            },
+            Transform::from_xyz(-48.0, 16.0, 1.0),
+            Port {
+                is_output: false,
+                port_id: 0
             }
-            GateType::NOR => {
-                spawn_block(&mut commands, event.position, &textures);
-            }
-            GateType::AND => {
-                spawn_block(&mut commands, event.position, &textures);
-            }
-            GateType::OR => {
-                spawn_block(&mut commands, event.position, &textures);
-            }
-            _ => {
-                spawn_block(&mut commands, event.position, &textures);
-            }
+        ));
+        parent.spawn((
+            Sprite {
+                image: textures.port.clone(),
+                color: Color::srgb(1.0, 0.3, 0.3),
+                custom_size: Some(Vec2::splat(10.0)),
+                ..default()
+            },
+            Transform::from_xyz(-48.0, -16.0, 1.0),
+            Port {
+                is_output: false,
+                port_id: 1
+            },
+        ));
+        parent.spawn((
+            Sprite {
+                image: textures.port.clone(),
+                color: Color::srgb(1.0, 0.3, 0.3),
+                custom_size: Some(Vec2::splat(10.0)),
+                ..default()
+            },
+            Transform::from_xyz(48.0, 0.0, 1.0),
+            Port {
+                is_output: true,
+                port_id: 0
+            },
+        ));
+    });
+
+        // match event.gate_type {
+        //     GateType::NAND => {
+        //         spawn_block(&mut commands, event.position, &textures);
+        //     }
+        //     GateType::NOR => {
+        //         spawn_block(&mut commands, event.position, &textures);
+        //     }
+        //     GateType::AND => {
+        //         spawn_block(&mut commands, event.position, &textures);
+        //     }
+        //     GateType::OR => {
+        //         spawn_block(&mut commands, event.position, &textures);
+        //     }
+        //     _ => {
+        //         spawn_block(&mut commands, event.position, &textures);
+        //     }
+        // }
+    }
+}
+
+// Function for detecting the user selecting an input port
+pub fn select_input_port(
+    mut state: ResMut<ConnectionState>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    query: Query<(Entity, &GlobalTransform, &Port)>,
+) {
+    if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+    
+    if state.selected_input.is_some() { // Only run if nothing is selected
+        return;
+    }
+
+    let Some(cursor) = cursor_to_world(&windows, &cameras) else { return };
+
+    for (entity, transform, port) in &query {
+        let dist = transform.translation().truncate().distance(cursor);
+
+        if dist < 10.0 && !port.is_output {
+            state.selected_input = Some(entity);
+            state.just_selected = true;
+            println!("Selected input port: {:?}", entity);
+            break;
+            
         }
+        // if state.just_selected {
+        //     sprite.color = Color::GREEN;
+        // } else {
+        //     sprite.color = Color::RED;
+        // }
+    }
+}
+
+// Function for detecting the user selecting an output port after input port
+pub fn connect_to_output(
+    mut commands: Commands,
+    mut state: ResMut<ConnectionState>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    query: Query<(Entity, &GlobalTransform, &Port)>,
+) {
+    if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+    if state.selected_input.is_none() {
+        return;
+    }
+
+    if state.just_selected {
+        state.just_selected = false;
+        return; // skip same-frame click
+    }
+
+    let Some(input_entity) = state.selected_input else { return };
+
+    let Some(cursor) = cursor_to_world(&windows, &cameras) else { return };
+
+    for (entity, transform, port) in &query {
+        // Do not enable clicking on same port
+        if entity == input_entity {
+            continue;
+        }
+
+        let dist = transform.translation().truncate().distance(cursor);
+
+        // Prevent connecting an input to an input
+        if dist < 10.0 && port.is_output {
+            // VALID CONNECTION
+            println!("Valid connection found!");
+
+            commands.spawn((
+                Wire {
+                    from: entity,
+                    to: input_entity,
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+            ))
+            .with_children(|parent| {
+
+                // WIP: MANHATTAN ROUTING
+                // // horizontal segment
+                // parent.spawn((
+                //     Sprite {
+                //         color: Color::WHITE,
+                //         custom_size: Some(Vec2::new(10.0, 2.0)),
+                //         ..default()
+                //     },
+                //     Transform::default(),
+                // ));
+
+                // Create the wire as the child of the Wire object
+                parent.spawn((
+                    Sprite {
+                        color: Color::WHITE,
+                        custom_size: Some(Vec2::new(1.0, 1.0)),
+                        ..default()
+                    },
+                    Transform::default(),
+                ));
+            });
+
+            println!("Connected {:?} -> {:?}", entity, input_entity);
+
+            break;
+        }
+    }
+
+    // Always reset after second click attempt
+    state.selected_input = None;
+}
+
+// Update the wire texture every frame in case the gate is moved
+pub fn update_wires(
+    mut query: Query<(&Wire, &mut Transform)>,
+    port_query: Query<&GlobalTransform, With<Port>>,
+) {
+    for (wire, mut transform) in &mut query {
+        let Ok(from_tf) = port_query.get(wire.from) else { continue };
+        let Ok(to_tf) = port_query.get(wire.to) else { continue };
+
+        let start = from_tf.translation();
+        let end = to_tf.translation();
+
+        let diff = end - start;
+        let length = diff.length();
+
+        transform.translation = (start + end) / 2.0;
+        transform.scale = Vec3::new(length, 2.0, 1.0);
+
+        let angle = diff.y.atan2(diff.x);
+        transform.rotation = Quat::from_rotation_z(angle);
     }
 }

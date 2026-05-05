@@ -11,12 +11,22 @@ pub struct Port {
 
 #[derive(Component)]
 pub struct Wire {
-    from: Entity, // Where does this wire start
-    to: Entity, // ...and where does it end?
+    pub from: Entity, // Where does this wire start
+    pub to: Entity, // ...and where does it end?
+}
+
+#[derive(Component)]
+pub struct WireSegment;
+
+// Used to track which port is clicked on
+#[derive(Resource, Default)]
+pub struct ConnectionState {
+    pub selected_input: Option<Entity>,
+    pub just_selected: bool,
 }
 
 // All components used for dragging stuff
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Draggable;
 
 #[derive(Resource, Default)]
