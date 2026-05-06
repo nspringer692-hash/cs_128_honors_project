@@ -1,5 +1,7 @@
 use bevy::{prelude::*};
 use crate::gate::{Gate, GateType};
+use std::collections::HashMap;
+
 //this is the actual graph, with each gate being stated in the gates vector and the graph being the actual was to find run through the values
 #[derive(Component)]
 pub struct Circuit {
@@ -26,12 +28,8 @@ impl Circuit {
     // this also inputs a blank row and column to the empty matrix
     // this function also clearly assigns an id value to each newly created gate in the "playarea/field"
     pub fn add_gate(&mut self, gate_type: GateType) {
-        let value: i32 = match gate_type {
-            GateType::NOT => 1,
-            _ => 2,
-        };
 
-        let insert = Gate::new(gate_type, value as usize);
+        let insert = Gate::new(gate_type);
         let curr_id = insert.id as usize;
         self.add_existing_gate(insert, curr_id);
     }
@@ -106,17 +104,7 @@ impl Circuit {
         None
     }
 
-    // fn find_row_id(&self, node_id: usize) -> i32 {
-    //     let mut curr = 0;
-    //     for row in &self.graph {
-    //         if row[0] == Some(node_id) {
-    //             return curr;
-    //         }
-    //         curr += 1;
-    //     }
-    //     -1
-    // }
-
+    // helper that confirms that the output is only connected to the right amount of output values
     pub fn confirm_output(&self) -> bool {
         if &self.graph[0][1] == &None || &self.graph[0][2] != &None {
             return false;
@@ -124,6 +112,7 @@ impl Circuit {
         true
     }
 
+    // helper that confirms that all gates are connected and not dangling
     pub fn check_valid_connections(&self) -> bool {
         let mut correct = 0;
         for gate in 0..self.gates.len() {
@@ -176,6 +165,83 @@ impl Circuit {
 
         false
 
+    }
+
+    // essentially this function is the one that has the full logic of the gates and this is used to determine
+    // what the output is when the input is put in as 0 or 1, using the logic for each gate to determine this
+    pub fn evaluate(&self, input: bool) -> bool {
+        let mut values: HashMap<usize, bool> = HashMap::new();
+        values.insert(10000, input);
+        let mut queue: Vec<usize> = vec![10000];
+
+        // essentially this function uses a sorta-topological to test the logic of the current gates
+        //going throught the gate structure until reaching the output id, then returning that said id
+        while !queue.is_empty() {
+            let current = queue.pop().unwrap();
+
+            for row in self.graph.iter() {
+                // now the program is testing whether all values prior to this gate location have been tested
+                // if any of the gates haven't been tested, then you can't continue
+                if row.contains(&Some(current)) && row[0] != Some(current) {
+                    let mut ready = true;
+                    let mut i = 1;
+                    while i < row.len() {
+                        if let Some(dep_id) = row[i] {
+                            if !values.contains_key(&dep_id) {
+                                ready = false;
+                                break;
+                            }
+                        }
+                        i += 1;
+                    }
+
+                    if ready {
+                        let mut inputs: Vec<bool> = Vec::new();
+                        let mut i = 1;
+                        // taking all values in that gate and storing them in inputs to be used later
+                        while i < row.len() {
+                            if let Some(dep_id) = row[i] {
+                                inputs.push(*values.get(&dep_id).unwrap());
+                            }
+                            i += 1;
+                        }
+                        
+                        let gate_id = row[0].unwrap();
+                        // test to see whether the gate is the output
+                        if gate_id == 10001 {
+                            values.insert(gate_id, inputs[0]);
+                            continue;
+                        }
+
+                        let mut found_gate = None;
+                        for gate in &self.gates {
+                            if gate.id as usize == gate_id {
+                                found_gate = Some(gate);
+                                break;
+                            }
+                        }
+
+                        // from the lines, you are actually getting the actual output of the tested gates
+                        // with the match statement, which will eventually get to the output value
+                        let gate = found_gate.expect("Could not find a gate with that ID");
+                        let result = match gate.kind {
+                            GateType::AND  => inputs[0] && inputs[1],
+                            GateType::OR   => inputs[0] || inputs[1],
+                            GateType::NOT  => !inputs[0],
+                            GateType::NAND => !(inputs[0] && inputs[1]),
+                            GateType::NOR  => !(inputs[0] || inputs[1]),
+                            GateType::XOR  => inputs[0] ^ inputs[1],
+                            GateType::XNOR => !(inputs[0] ^ inputs[1]),
+                        };
+                        values.insert(gate_id, result);
+                        queue.push(gate_id);
+                    }
+                }
+            }
+        }
+        // from the values, this code will read what the value is from the adjacent value, in which it
+        // is in the hashmap
+        *values.get(&10001).unwrap_or(&false)
     }
 }
 
