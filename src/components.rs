@@ -7,6 +7,7 @@ use bevy::prelude::*;
 pub struct Port {
     pub port_id: i32, // 0 if left, 1 if right
     pub is_output: bool, // is this port an input or output?
+    pub identifier: i32,
 }
 
 #[derive(Component)]

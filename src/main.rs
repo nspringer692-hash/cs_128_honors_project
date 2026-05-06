@@ -98,4 +98,3 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, textures: Res<T
 fn process_circuit_simulation(mut active_circuit: ResMut<ActiveCircuit>) {
     let circuit = &mut active_circuit.0;
 }
-

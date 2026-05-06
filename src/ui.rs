@@ -79,9 +79,10 @@ pub fn spawn_grid(commands: &mut Commands) {
     }
 }
 
-// //Helper function, creates said object, a movable gate, usually.
+//Helper function, creates said object, a movable gate, usually.
 // pub fn spawn_block(commands: &mut Commands, pos: Vec3, textures: &Textures) {
-
+//     //for the identifier value
+//     let gate_id = active_circuit.0.gates.last().unwrap().id;
 //     // Snap the position of this object to the grid
 //     let snapped = Vec3::new(
 //         snap_to_grid(pos.x),
@@ -109,7 +110,8 @@ pub fn spawn_grid(commands: &mut Commands) {
 //             Transform::from_xyz(-48.0, 16.0, 1.0),
 //             Port {
 //                 is_output: false,
-//                 port_id: 0
+//                 port_id: 0,
+//                 identifier: gate_id,
 //             }
 //         ));
 //         parent.spawn((
@@ -682,6 +684,10 @@ pub fn handle_spawn_gate(
 
         // Add gate to backend
         active_circuit.0.add_gate(event.gate_type.clone());
+        // println!("/////////");
+        // println!("current graph:");
+        // println!("{:?}", active_circuit.0.graph);
+        // println!("/////////");
 
         // Get ID of newly created gate
         let gate_id = active_circuit.0.gates.last().unwrap().id;
@@ -717,7 +723,8 @@ pub fn handle_spawn_gate(
                     Transform::from_xyz(-48.0, 0.0, 1.0),
                     Port {
                         is_output: false,
-                        port_id: 0
+                        port_id: 0,
+                        identifier: gate_id,
                     },
                 ));
                 parent.spawn((
@@ -730,7 +737,8 @@ pub fn handle_spawn_gate(
                     Transform::from_xyz(48.0, 0.0, 1.0),
                     Port {
                         is_output: true,
-                        port_id: 0
+                        port_id: 0,
+                        identifier: gate_id,
                     },
                 ));
             });
@@ -752,7 +760,8 @@ pub fn handle_spawn_gate(
                     Transform::from_xyz(-48.0, 16.0, 1.0),
                     Port {
                         is_output: false,
-                        port_id: 0
+                        port_id: 0,
+                        identifier: gate_id,
                     }
                 ));
                 parent.spawn((
@@ -765,7 +774,8 @@ pub fn handle_spawn_gate(
                     Transform::from_xyz(-48.0, -16.0, 1.0),
                     Port {
                         is_output: false,
-                        port_id: 1
+                        port_id: 1,
+                        identifier: gate_id,
                     },
                 ));
                 parent.spawn((
@@ -778,7 +788,8 @@ pub fn handle_spawn_gate(
                     Transform::from_xyz(48.0, 0.0, 1.0),
                     Port {
                         is_output: true,
-                        port_id: 0
+                        port_id: 0,
+                        identifier: gate_id,
                     },
                 ));
             });
@@ -812,6 +823,7 @@ pub fn select_input_port(
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &GlobalTransform, &Port)>,
 ) {
+   
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
@@ -824,7 +836,6 @@ pub fn select_input_port(
 
     for (entity, transform, port) in &query {
         let dist = transform.translation().truncate().distance(cursor);
-
         if dist < 10.0 && !port.is_output {
             state.selected_input = Some(entity);
             state.just_selected = true;
@@ -848,6 +859,7 @@ pub fn connect_to_output(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &GlobalTransform, &Port)>,
+    mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
         return;
@@ -870,14 +882,29 @@ pub fn connect_to_output(
         if entity == input_entity {
             continue;
         }
-
+        
+        // check for self-looping, so you can't connect a gate's input to its output
         let dist = transform.translation().truncate().distance(cursor);
-
+        let Ok((_, _, input_port)) = query.get(input_entity) else {
+            state.selected_input = None;
+            return;
+        };
+        if port.identifier == input_port.identifier {
+            println!("needs to be different gate");
+        }
         // Prevent connecting an input to an input
-        if dist < 10.0 && port.is_output {
+        if dist < 10.0 && port.is_output && port.identifier != input_port.identifier {
             // VALID CONNECTION
             println!("Valid connection found!");
 
+            // Logic behind connecting two gates together, in the current level.
+            let input_id = input_port.identifier as usize;
+            let output_id = port.identifier as usize;
+            active_circuit.0.connect_gates(input_id, output_id);
+            println!("/////////");
+            println!("current graph:");
+            println!("{:?}", active_circuit.0.graph);
+            println!("/////////");
             commands.spawn((
                 Wire {
                     from: entity,

@@ -75,10 +75,7 @@ impl Circuit {
     }
 
     // when two gates are connected, this function is to be used (not tested yet)
-    pub fn connect_gates(&mut self, from: Gate, to: Gate) {
-    
-        let from_id: usize = from.id as usize;
-        let to_id: usize = to.id as usize;
+    pub fn connect_gates(&mut self, from_id: usize, to_id: usize) {
         for i in 0..self.graph.len() {
             if self.graph[i][0] == Some(from_id) {
                 for value in 0..self.graph[i].len() {
