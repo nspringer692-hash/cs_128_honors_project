@@ -71,6 +71,8 @@ fn main() {
         connect_to_output.after(select_input_port),
         update_wires,
         cleanup_wires,
+        lighten_on_hover,
+        lighten_port_on_hover,
     ))
     .add_message::<SpawnGateEvent>()
     .run();

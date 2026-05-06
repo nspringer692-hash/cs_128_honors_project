@@ -14,6 +14,7 @@ const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.35, 0.35);
 
+
 // Simple test resource : output 1 or 0 on button click in Editor state
 #[derive(Resource)]
 pub struct CurrentStat {
@@ -44,6 +45,7 @@ pub enum GameState {
     Credits,
 }
 
+// Set the grid size to 16
 // Used for snapping to grid
 const GRID_SIZE: f32 = 16.0;
 
@@ -53,7 +55,13 @@ const GRID_SIZE: f32 = 16.0;
     "Give me access to this data when the system runs"
 */
 
-// Visual grid for workspace
+/// spawn_grid: spawn a series of grey lines across the play space every 16 coordinate points x and y
+
+/// https://docs.rs/bevy/latest/bevy/prelude/struct.Commands.html
+/// Referenced here to understand how to spawn and delete objects
+/// 
+/// # Arguments
+/// 'commands' - Modify world by spawning entities
 pub fn spawn_grid(commands: &mut Commands) {
     let spacing = 16.0; // Create a line every 16 units
     let half_size = 2000.0; // Stop creating lines at this point
@@ -88,24 +96,8 @@ pub fn spawn_grid(commands: &mut Commands) {
     }
 }
 
-//spawns a stable block, or a block that can't be moved
-// USE LATER :)
-pub fn spawn_stable_block(commands: &mut Commands, pos: Vec3, texture: Handle<Image>) {
-    commands.spawn((
-        Sprite {
-            image: texture,
-            custom_size: Some(Vec2::splat(100.0)),
-            ..default()
-        },
-        Transform::from_translation(pos),
-        // Use a system to handle pickable interactions instead of trying to attach
-        // a callback here (the `On::<Pointer<Click>>::run` API is not available).
-    ));
-}
-
 /// Delete a gate and connected wires when the user right-clicks near it.
 /// Only delete one entity per click
-/// TODO: Also delete the wires it is connected to
 
 /// https://docs.rs/bevy/latest/bevy/prelude/struct.Transform.html
 /// Referenced here to access the distance between an entity and a given point
@@ -115,19 +107,19 @@ pub fn spawn_stable_block(commands: &mut Commands, pos: Vec3, texture: Handle<Im
 /// 
 /// # Arguments
 /// 'commands' - Modify world by despawning entities
+/// 'mouse' - Read the mouse input
 /// 'windows' - Read over all windows to get cursor position on screen
 /// 'cameras' - Access screen coordinates
 /// 'query' - Access all entities with Transform, GateId components, and are Draggable
 /// 'wires' - Access all entities with a Wire component
 /// 'active_circuit' - Represents the backend for deleting the node associated with that gate
 pub fn delete_on_right_click(
-    mut commands: Commands, // Needed to run despawn entity
-    mouse: Res<ButtonInput<MouseButton>>, // Read mouse's input
-    windows: Query<&Window>, // Read over all Windows
-    cameras: Query<(&Camera, &GlobalTransform)>, // Access screen coordinates
-    query: Query<(Entity, &Transform, &GateId), With<Draggable>>, // Access all entities with Draggable component
-    wires: Query<(Entity, &Wire)>, // Access all entities with a Wire component
-    mut active_circuit: ResMut<ActiveCircuit>, // Modify the backend
+    mut commands: Commands,
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    query: Query<(Entity, &Transform, &GateId), With<Draggable>>,
+    mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     // If mouse is not right clicking, ignore
     if !mouse.just_pressed(MouseButton::Right) {
@@ -144,18 +136,8 @@ pub fn delete_on_right_click(
         // Get the distance from the entity
         let dist = transform.translation.truncate().distance(cursor_pos);
 
-        // If this entity is 50 units or less away from the mouse (hovered on), delete
-        if dist < 50.0 {
-
-            // Delete connected wires
-            // TODO: FIX, CURRENTLY DOES NOT WORK AS INTENDED
-            for (wire_entity, wire) in &wires {
-                if wire.from == entity || wire.to == entity {
-                    commands.entity(wire_entity).despawn();
-                    break;
-                }
-            }
-            
+        // If this entity is 40 units or less away from the mouse (hovered on), delete
+        if dist < 40.0 {       
             // Delete the gate and its children
             commands.entity(entity).despawn();
 
@@ -170,12 +152,8 @@ pub fn delete_on_right_click(
 /// cursor_to_world: Get the cursor's position, used for detecting which object is clicked
 /// 
 /// # Arguments
-/// 'commands' - Modify world by despawning entities
 /// 'windows' - Read over all windows to get cursor position on screen
 /// 'cameras' - Access screen coordinates
-/// 'query' - Access all entities with Transform, GateId components, and are Draggable
-/// 'wires' - Access all entities with a Wire component
-/// 'active_circuit' - Represents the backend for deleting the node associated with that gate
 pub fn cursor_to_world(
     windows: &Query<&Window>,
     cameras: &Query<(&Camera, &GlobalTransform)>,
@@ -193,9 +171,14 @@ pub fn cursor_to_world(
     camera.viewport_to_world_2d(cam_transform, cursor).ok()
 }
 
-// Start dragging on click
-//enables the ability to drag objects given
+/// start_drag_system: Detect when the left mouse button is clicked over an entity, then set DragState
 /// 
+/// # Arguments
+/// 'drag_state' - Modify the current drag state so other drag functions know when to run
+/// 'mouse' - Read the mouse input
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all draggable entities
 pub fn start_drag_system(
     mut drag_state: ResMut<DragState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -203,26 +186,36 @@ pub fn start_drag_system(
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &Transform), With<Draggable>>,
 ) {
+    // Do not run this function if the left mouse button is lifted
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
 
+    // Get the cursor position
     let Some(cursor_pos) = cursor_to_world(&windows, &cameras) else {
         return;
     };
 
-    // naive hit test (good for circles/small objects)
+    // Check every draggable entity
     for (entity, transform) in &query {
         let dist = transform.translation.truncate().distance(cursor_pos);
 
-        if dist < 20.0 {
+        // If the mouse is hovering over the entity, set the drag state and exit
+        if dist < 40.0 {
             drag_state.entity = Some(entity);
             break;
         }
     }
 }
 
-// Update dragged entity position
+/// drag_system: Update this draggable entity's coordinates to be where the mouse is
+/// 
+/// # Arguments
+/// 'drag_state' - Modify the current drag state
+/// 'mouse' - Read the mouse input
+/// 'windows' - Read over all windows to get cursor position on screen, needed by cursor_to_world
+/// 'cameras' - Access screen coordinates, needed by cursor_to_world
+/// 'query' - Access all draggable entities
 pub fn drag_system(
     drag_state: Res<DragState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -230,30 +223,42 @@ pub fn drag_system(
     cameras: Query<(&Camera, &GlobalTransform)>,
     mut query: Query<&mut Transform>,
 ) {
+    // Get the current entity
     let Some(entity) = drag_state.entity else {
         return;
     };
 
+    // If LMB is let go, do not run this function anymore
     if !mouse.pressed(MouseButton::Left) {
         return;
     }
 
+    // Get cursor position
     let Some(cursor_pos) = cursor_to_world(&windows, &cameras) else {
         return;
     };
 
+    // Transform this entity's position
+    // Don't forget to snap to grid!
     if let Ok(mut transform) = query.get_mut(entity) {
         transform.translation.x = snap_to_grid(cursor_pos.x);
         transform.translation.y = snap_to_grid(cursor_pos.y);
     }
 }
 
-// Helper: snap to grid
+/// snap_to_grid: Force the passed floating value to be the value closest to it in a 16 coordinate grid
 pub fn snap_to_grid(value: f32) -> f32 {
+    // Divide the coordinate by the grid size
+    // Round to nearest integer
+    // Multiply back by grid size to get snapped position
     (value / GRID_SIZE).round() * GRID_SIZE
 }
 
-// Stop dragging
+/// end_drag_system: Set the current drag state's entity to be None when the left mouse button is released
+/// 
+/// # Arguments
+/// 'drag_state' - Set entity in DragState to None
+/// 'mouse' - Read the mouse input
 pub fn end_drag_system(
     mut drag_state: ResMut<DragState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -263,15 +268,21 @@ pub fn end_drag_system(
     }
 }
 
-// Run the UI system for rendering egui menus + state logic
-// Run every frame and depending on whenever a state button is pressed, render different UI
+/// The beefy one
+/// user_interface: Handle windows and transitions and handle pressing buttons
+/// 
+/// # Arguments
+/// 'contexts' - Give access to egui to draw UI
+/// 'state' - Read what state the game is currently in
+/// 'next_state' - Update what state to change to next frame
+/// 'message_writer' - Create a message for the handle_spawn_gate to read to determine what gate to spawn
+/// 'popup' - Handle whether the help and tutorial popup should exist or not
 pub fn user_interface(
     mut contexts: EguiContexts, // Give access to egui to draw UI
     state: Res<State<GameState>>, // Read what state the game is currently in
     mut next_state: ResMut<NextState<GameState>>, // What state to change to next frame?
     mut message_writer: MessageWriter<SpawnGateEvent>,
     mut popup: ResMut<PopupState>,
-    _commands: Commands,
 ) -> Result {
     let ctx = contexts.ctx_mut()?; // Get access to bevy_egui's internal state
 
@@ -342,7 +353,6 @@ pub fn user_interface(
                 });
             });
             // Create new draggable window for user to add gates
-            // WIP
             egui::Window::new("Components").show(ctx, |ui| {
                 // let mut current_level = crate::circuit::Circuit::new(0, 5);
                 if ui // NAND
@@ -547,7 +557,13 @@ pub fn button(asset_server: &AssetServer, x_pos: f32, y_pos: f32, width: u32, he
     )
 }
 
-// Spawn a gate and add it to the backend when a gate is passed from the gate spawn button
+/// handle_spawn_gate: Given the message passed from the user_interface function, spawn a new gate
+/// 
+/// # Arguments
+/// 'commands' - Write to world
+/// 'events' - Read what messages were written by user_interface
+/// 'textures' - Access the textures in assets/textures/...
+/// 'active_circuit' - Modify the backend to add new gate node to the graph
 pub fn handle_spawn_gate(
     mut commands: Commands,
     mut events: MessageReader<SpawnGateEvent>,
@@ -558,16 +574,11 @@ pub fn handle_spawn_gate(
 
         // Add gate to backend
         active_circuit.0.add_gate(event.gate_type.clone());
-        // println!("/////////");
-        // println!("current graph:");
-        // println!("{:?}", active_circuit.0.graph);
-        // println!("/////////");
 
         // Get ID of newly created gate
         let gate_id = active_circuit.0.gates.last().unwrap().id;
 
         // Get the type of gate to set the texture to
-        
         let texture = match event.gate_type.clone() {
             GateType::NAND => textures.nand_gate.clone(),
             GateType::AND => textures.and_gate.clone(),
@@ -590,11 +601,11 @@ pub fn handle_spawn_gate(
                 parent.spawn((
                     Sprite {
                         image: textures.port.clone(),
-                        color: Color::srgb(1.0, 0.3, 0.3),
+                        color: Color::srgb(0.4, 0.4, 0.4),
                         custom_size: Some(Vec2::splat(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(-48.0, 0.0, 1.0),
+                    Transform::from_xyz(-48.0, 0.0, 10.0), // make on top of everything
                     Port {
                         is_output: false,
                         port_id: 0,
@@ -604,11 +615,11 @@ pub fn handle_spawn_gate(
                 parent.spawn((
                     Sprite {
                         image: textures.port.clone(),
-                        color: Color::srgb(1.0, 0.3, 0.3),
+                        color: Color::srgb(0.4, 0.4, 0.4),
                         custom_size: Some(Vec2::splat(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(48.0, 0.0, 1.0),
+                    Transform::from_xyz(48.0, 0.0, 10.0),
                     Port {
                         is_output: true,
                         port_id: 0,
@@ -616,7 +627,7 @@ pub fn handle_spawn_gate(
                     },
                 ));
             });
-        } else {
+        } else { // This is not a NOT, spawn two input ports
             commands.spawn(BlockBundle::new(
                 event.position,
                 texture,
@@ -627,25 +638,26 @@ pub fn handle_spawn_gate(
                 parent.spawn((
                     Sprite {
                         image: textures.port.clone(),
-                        color: Color::srgb(1.0, 0.3, 0.3),
+                        color: Color::srgb(0.4, 0.4, 0.4),
                         custom_size: Some(Vec2::splat(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(-48.0, 16.0, 1.0),
+                    Transform::from_xyz(-48.0, 16.0, 10.0),
                     Port {
                         is_output: false,
                         port_id: 0,
                         identifier: gate_id,
                     }
                 ));
+                // Second port
                 parent.spawn((
                     Sprite {
                         image: textures.port.clone(),
-                        color: Color::srgb(1.0, 0.3, 0.3),
+                        color: Color::srgb(0.4, 0.4, 0.4),
                         custom_size: Some(Vec2::splat(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(-48.0, -16.0, 1.0),
+                    Transform::from_xyz(-48.0, -16.0, 10.0),
                     Port {
                         is_output: false,
                         port_id: 1,
@@ -655,11 +667,11 @@ pub fn handle_spawn_gate(
                 parent.spawn((
                     Sprite {
                         image: textures.port.clone(),
-                        color: Color::srgb(1.0, 0.3, 0.3),
+                        color: Color::srgb(0.4, 0.4, 0.4),
                         custom_size: Some(Vec2::splat(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(48.0, 0.0, 1.0),
+                    Transform::from_xyz(48.0, 0.0, 10.0),
                     Port {
                         is_output: true,
                         port_id: 0,
@@ -668,28 +680,18 @@ pub fn handle_spawn_gate(
                 ));
             });
         }
-
-        // match event.gate_type {
-        //     GateType::NAND => {
-        //         spawn_block(&mut commands, event.position, &textures);
-        //     }
-        //     GateType::NOR => {
-        //         spawn_block(&mut commands, event.position, &textures);
-        //     }
-        //     GateType::AND => {
-        //         spawn_block(&mut commands, event.position, &textures);
-        //     }
-        //     GateType::OR => {
-        //         spawn_block(&mut commands, event.position, &textures);
-        //     }
-        //     _ => {
-        //         spawn_block(&mut commands, event.position, &textures);
-        //     }
-        // }
     }
 }
 
-// Function for detecting the user selecting an input port
+/// select_input_port: Update selected input whenever the user left clicks on a port
+/// 
+/// # Arguments
+/// 'state' - Set the connection state for the given entity
+/// 'commands' - Modify world by despawning entities
+/// 'mouse' - Read the mouse input
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all entities with Transform, GateId components, and are Draggable
 pub fn select_input_port(
     mut state: ResMut<ConnectionState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -717,15 +719,19 @@ pub fn select_input_port(
             break;
             
         }
-        // if state.just_selected {
-        //     sprite.color = Color::GREEN;
-        // } else {
-        //     sprite.color = Color::RED;
-        // }
     }
 }
 
-// Function for detecting the user selecting an output port after input port
+/// select_input_port: Update selected input whenever the user left clicks on a port
+/// 
+/// # Arguments
+/// 'commands' - Modify world by despawning entities
+/// 'state' - Set the connection state for the given entity
+/// 'mouse' - Read the mouse input
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all entities with Transform, GateId components, and are Draggable
+/// 'active_circuit' - Represents the backend for deleting the node associated with that gate
 pub fn connect_to_output(
     mut commands: Commands,
     mut state: ResMut<ConnectionState>,
@@ -837,14 +843,14 @@ pub fn spawn_board_port(
     let snapped = Vec3::new(
         snap_to_grid(pos.x),
         snap_to_grid(pos.y),
-        pos.z,
+        pos.z + 10.0, // Make front
     );
 
 
     commands.spawn((
         Sprite {
             image: textures.port.clone(),
-            color: Color::srgb(1.0, 0.3, 0.3),
+            color: Color::srgb(0.4, 0.4, 0.4), // grey
             custom_size: Some(Vec2::splat(10.0)),
             ..default()
         },
@@ -872,5 +878,46 @@ pub fn cleanup_wires(
         if !from_alive || !to_alive {
             commands.entity(wire_entity).despawn();
         }
+    }
+}
+
+// Brighten up any gate whenever the mouse is on top of it
+pub fn lighten_on_hover(
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    mut query: Query<(&Transform, &mut Sprite), With<Draggable>>,
+) {
+    let Some(cursor_pos) = cursor_to_world(&windows, &cameras) else {
+        return;
+    };
+
+    for (transform, mut sprite) in &mut query {
+        let dist = transform.translation.truncate().distance(cursor_pos);
+
+        let base = Color::srgb(0.8, 0.8, 0.8);
+        let hover = Color::srgb(1.0, 1.0, 1.0);
+
+        sprite.color = if dist < 40.0 { hover } else { base };
+    }
+}
+
+// Brighten up any port whenever the mouse is on top of it
+pub fn lighten_port_on_hover(
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    mut query: Query<(&GlobalTransform, &mut Sprite), With<Port>>,
+) {
+    let Some(cursor_pos) = cursor_to_world(&windows, &cameras) else {
+        return;
+    };
+
+    for (global_transform, mut sprite) in &mut query {
+        let world_pos = global_transform.translation().truncate();
+        let dist = world_pos.distance(cursor_pos);
+
+        let base = Color::srgb(0.4, 0.4, 0.4);
+        let hover = Color::srgb(0.7, 0.7, 0.7);
+
+        sprite.color = if dist < 12.0 { hover } else { base };
     }
 }
