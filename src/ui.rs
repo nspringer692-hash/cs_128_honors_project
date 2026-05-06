@@ -941,3 +941,34 @@ pub fn update_wires(
         transform.rotation = Quat::from_rotation_z(angle);
     }
 }
+
+pub fn spawn_board_port(
+    commands: &mut Commands,
+    pos: Vec3,
+    textures: &Textures,
+    is_output: bool,
+    identifier: i32,
+    port_id: i32,
+) {
+    let snapped = Vec3::new(
+        snap_to_grid(pos.x),
+        snap_to_grid(pos.y),
+        pos.z,
+    );
+
+
+    commands.spawn((
+        Sprite {
+            image: textures.port.clone(),
+            color: Color::srgb(1.0, 0.3, 0.3),
+            custom_size: Some(Vec2::splat(10.0)),
+            ..default()
+        },
+        Transform::from_translation(snapped),
+        Port {
+            port_id,
+            is_output,
+            identifier,
+        },
+    ));
+}
