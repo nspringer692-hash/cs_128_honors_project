@@ -47,14 +47,22 @@ pub enum GameState {
 // Used for snapping to grid
 const GRID_SIZE: f32 = 16.0;
 
+/* 
+    Bevy runs on an ECS system
+    This is important to know since function parameters are basically:
+    "Give me access to this data when the system runs"
+*/
+
 // Visual grid for workspace
 pub fn spawn_grid(commands: &mut Commands) {
-    let spacing = 16.0;
-    let half_size = 2000.0;
+    let spacing = 16.0; // Create a line every 16 units
+    let half_size = 2000.0; // Stop creating lines at this point
 
+    // Start from the left and add lines until x >= 0
     let mut x = -half_size;
     while x <= half_size {
         commands.spawn((
+            // Create a grey line that spans the entire window
             Sprite {
                 color: Color::srgba(0.4, 0.4, 0.4, 0.3),
                 custom_size: Some(Vec2::new(1.0, half_size * 2.0)),
@@ -65,6 +73,7 @@ pub fn spawn_grid(commands: &mut Commands) {
         x += spacing;
     }
 
+    // Start from the bottom and add lines until y >= 0
     let mut y = -half_size;
     while y <= half_size {
         commands.spawn((
@@ -79,71 +88,8 @@ pub fn spawn_grid(commands: &mut Commands) {
     }
 }
 
-//Helper function, creates said object, a movable gate, usually.
-// pub fn spawn_block(commands: &mut Commands, pos: Vec3, textures: &Textures) {
-//     //for the identifier value
-//     let gate_id = active_circuit.0.gates.last().unwrap().id;
-//     // Snap the position of this object to the grid
-//     let snapped = Vec3::new(
-//         snap_to_grid(pos.x),
-//         snap_to_grid(pos.y),
-//         pos.z, // pos.z is irrelevant since it's a 2D game
-//     );
-//     commands.spawn((
-//         Sprite {
-//             image: textures.gate.clone(),
-//             custom_size: Some(Vec2::splat(100.0)),
-//             ..default()
-//         },
-//         Transform::from_translation(snapped),
-//         Draggable,
-//     ))
-//     .with_children(|parent| {
-//         // First port
-//         parent.spawn((
-//             Sprite {
-//                 image: textures.port.clone(),
-//                 color: Color::srgb(1.0, 0.3, 0.3),
-//                 custom_size: Some(Vec2::splat(10.0)),
-//                 ..default()
-//             },
-//             Transform::from_xyz(-48.0, 16.0, 1.0),
-//             Port {
-//                 is_output: false,
-//                 port_id: 0,
-//                 identifier: gate_id,
-//             }
-//         ));
-//         parent.spawn((
-//             Sprite {
-//                 image: textures.port.clone(),
-//                 color: Color::srgb(1.0, 0.3, 0.3),
-//                 custom_size: Some(Vec2::splat(10.0)),
-//                 ..default()
-//             },
-//             Transform::from_xyz(-48.0, -16.0, 1.0),
-//             Port {
-//                 is_output: false,
-//                 port_id: 1
-//             },
-//         ));
-//         parent.spawn((
-//             Sprite {
-//                 image: textures.port.clone(),
-//                 color: Color::srgb(1.0, 0.3, 0.3),
-//                 custom_size: Some(Vec2::splat(10.0)),
-//                 ..default()
-//             },
-//             Transform::from_xyz(48.0, 0.0, 1.0),
-//             Port {
-//                 is_output: true,
-//                 port_id: 0
-//             },
-//         ));
-//     });
-// }
-
 //spawns a stable block, or a block that can't be moved
+// USE LATER :)
 pub fn spawn_stable_block(commands: &mut Commands, pos: Vec3, texture: Handle<Image>) {
     commands.spawn((
         Sprite {
@@ -157,16 +103,31 @@ pub fn spawn_stable_block(commands: &mut Commands, pos: Vec3, texture: Handle<Im
     ));
 }
 
-// Delete a block whenever hovering and right click is pressed
+/// Delete a gate and connected wires when the user right-clicks near it.
+/// Only delete one entity per click
+/// TODO: Also delete the wires it is connected to
+
+/// https://docs.rs/bevy/latest/bevy/prelude/struct.Transform.html
+/// Referenced here to access the distance between an entity and a given point
+/// 
+/// https://bevy-cheatbook.github.io/input/mouse.html
+/// Referenced here to figure out how to access cursor clicks
+/// 
+/// # Arguments
+/// 'commands' - Modify world by despawning entities
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all entities with Transform, GateId components, and are Draggable
+/// 'wires' - Access all entities with a Wire component
+/// 'active_circuit' - Represents the backend for deleting the node associated with that gate
 pub fn delete_on_right_click(
     mut commands: Commands, // Needed to run despawn entity
     mouse: Res<ButtonInput<MouseButton>>, // Read mouse's input
-    windows: Query<&Window>, 
-    cameras: Query<(&Camera, &GlobalTransform)>,
-    query: Query<(Entity, &Transform, &GateId), With<Draggable>>,
-    wires: Query<(Entity, &Wire)>,
-    mut active_circuit: ResMut<ActiveCircuit>,
-    
+    windows: Query<&Window>, // Read over all Windows
+    cameras: Query<(&Camera, &GlobalTransform)>, // Access screen coordinates
+    query: Query<(Entity, &Transform, &GateId), With<Draggable>>, // Access all entities with Draggable component
+    wires: Query<(Entity, &Wire)>, // Access all entities with a Wire component
+    mut active_circuit: ResMut<ActiveCircuit>, // Modify the backend
 ) {
     // If mouse is not right clicking, ignore
     if !mouse.just_pressed(MouseButton::Right) {
@@ -178,12 +139,12 @@ pub fn delete_on_right_click(
         return;
     };
 
-    // Loop through each entity in the world
+    // Loop through each entity in the world and find its distance from mouse
     for (entity, transform, gate_id) in &query {
         // Get the distance from the entity
         let dist = transform.translation.truncate().distance(cursor_pos);
 
-        // If this entity is the closest to the mouse, delete it
+        // If this entity is 50 units or less away from the mouse (hovered on), delete
         if dist < 50.0 {
 
             // Delete connected wires
@@ -195,15 +156,25 @@ pub fn delete_on_right_click(
                 }
             }
             
-            // Delete the gate
+            // Delete the gate and its children
             commands.entity(entity).despawn();
+            // Remove this gate from the graph
             active_circuit.0.remove_gate(gate_id.0);
             break; // We only need to delete one!
         }
     }
 }
 
-// Get the cursor's position, used for detecting which object is clicked
+/// Helper: cursor_to_world
+/// cursor_to_world: Get the cursor's position, used for detecting which object is clicked
+/// 
+/// # Arguments
+/// 'commands' - Modify world by despawning entities
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all entities with Transform, GateId components, and are Draggable
+/// 'wires' - Access all entities with a Wire component
+/// 'active_circuit' - Represents the backend for deleting the node associated with that gate
 pub fn cursor_to_world(
     windows: &Query<&Window>,
     cameras: &Query<(&Camera, &GlobalTransform)>,
@@ -223,6 +194,7 @@ pub fn cursor_to_world(
 
 // Start dragging on click
 //enables the ability to drag objects given
+/// 
 pub fn start_drag_system(
     mut drag_state: ResMut<DragState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -298,7 +270,7 @@ pub fn user_interface(
     mut next_state: ResMut<NextState<GameState>>, // What state to change to next frame?
     mut message_writer: MessageWriter<SpawnGateEvent>,
     mut popup: ResMut<PopupState>,
-    mut commands: Commands,
+    _commands: Commands,
 ) -> Result {
     let ctx = contexts.ctx_mut()?; // Get access to bevy_egui's internal state
 

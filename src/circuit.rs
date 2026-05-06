@@ -1,4 +1,4 @@
-use bevy::{prelude::*, winit::RawWinitWindowEvent};
+use bevy::{prelude::*};
 use crate::gate::{Gate, GateType};
 
 //this is the actual graph, with each gate being stated in the gates vector and the graph being the actual was to find run through the values
@@ -25,10 +25,9 @@ impl Circuit {
     // this also inputs a blank row and column to the empty matrix
     // this function also clearly assigns an id value to each newly created gate in the "playarea/field"
     pub fn add_gate(&mut self, gate_type: GateType) {
-        let mut value: i32 = 0;  
-        match gate_type {
-            GateType::NOT => value = 1,
-            _ => value = 2,
+        let value: i32 = match gate_type {
+            GateType::NOT => 1,
+            _ => 2,
         };
 
         let insert = Gate::new(gate_type, value as usize);

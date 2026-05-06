@@ -18,8 +18,8 @@
 */
 
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
-use bevy::{color::palettes::basic::*, input_focus::InputFocus, prelude::*};
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use bevy::{input_focus::InputFocus};
 
 // All external files in src
 pub mod gate;
@@ -37,9 +37,8 @@ use textures::*; // Access all textures.rs functions
 use components::*; // Access all components.rs functions
 
 // Get the backend functions
-use gate::*;
 use circuit::*;
-use block::*;
+// use block::*;
 
 // Overall startup, creating the app, running throught the assets and running the program.
 fn main() {
@@ -76,25 +75,15 @@ fn main() {
     .run();
 }
 
-// creates the texture of the gates themselves, while using nand.png. Setting these objects
-// in the set coords, for example Vec3::new(-100.0, 0.0, 0.0) is put in the set coords given.
-
 //used in setting up the system *
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, textures: Res<Textures>) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
     commands.spawn(button(&asset_server, 450.0, 320.0, 125, 60));
     spawn_grid(&mut commands);
-
-    // Removed -- do not spawn anymore placeholder gates
-    // spawn_block(&mut commands, Vec3::new(-100.0, 0.0, 0.0), &textures); // Green
-    // spawn_block(&mut commands, Vec3::new(100.0, 0.0, 0.0), &textures); // Red
-    // spawn_block(&mut commands, Vec3::new(0.0, 100.0, 0.0), &textures); // Blue
 }
-//      ^
-//      |
-//      |
-// Spawn custom objects
 
 fn process_circuit_simulation(mut active_circuit: ResMut<ActiveCircuit>) {
-    let circuit = &mut active_circuit.0;
+
+    // Currently unused
+    let _circuit = &mut active_circuit.0;
 }
