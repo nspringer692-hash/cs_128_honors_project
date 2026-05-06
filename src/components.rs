@@ -33,3 +33,6 @@ pub struct Draggable;
 pub struct DragState {
     pub entity: Option<Entity>,
 }
+
+#[derive(Resource, Default)]
+pub struct ActiveLevel(pub Option<u32>);

@@ -79,67 +79,67 @@ pub fn spawn_grid(commands: &mut Commands) {
     }
 }
 
-//Helper function, creates said object, a movable gate, usually.
-pub fn spawn_block(commands: &mut Commands, pos: Vec3, textures: &Textures) {
+// //Helper function, creates said object, a movable gate, usually.
+// pub fn spawn_block(commands: &mut Commands, pos: Vec3, textures: &Textures) {
 
-    // Snap the position of this object to the grid
-    let snapped = Vec3::new(
-        snap_to_grid(pos.x),
-        snap_to_grid(pos.y),
-        pos.z, // pos.z is irrelevant since it's a 2D game
-    );
-    commands.spawn((
-        Sprite {
-            image: textures.gate.clone(),
-            custom_size: Some(Vec2::splat(100.0)),
-            ..default()
-        },
-        Transform::from_translation(snapped),
-        Draggable,
-    ))
-    .with_children(|parent| {
-        // First port
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(-48.0, 16.0, 1.0),
-            Port {
-                is_output: false,
-                port_id: 0
-            }
-        ));
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(-48.0, -16.0, 1.0),
-            Port {
-                is_output: false,
-                port_id: 1
-            },
-        ));
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(48.0, 0.0, 1.0),
-            Port {
-                is_output: true,
-                port_id: 0
-            },
-        ));
-    });
-}
+//     // Snap the position of this object to the grid
+//     let snapped = Vec3::new(
+//         snap_to_grid(pos.x),
+//         snap_to_grid(pos.y),
+//         pos.z, // pos.z is irrelevant since it's a 2D game
+//     );
+//     commands.spawn((
+//         Sprite {
+//             image: textures.gate.clone(),
+//             custom_size: Some(Vec2::splat(100.0)),
+//             ..default()
+//         },
+//         Transform::from_translation(snapped),
+//         Draggable,
+//     ))
+//     .with_children(|parent| {
+//         // First port
+//         parent.spawn((
+//             Sprite {
+//                 image: textures.port.clone(),
+//                 color: Color::srgb(1.0, 0.3, 0.3),
+//                 custom_size: Some(Vec2::splat(10.0)),
+//                 ..default()
+//             },
+//             Transform::from_xyz(-48.0, 16.0, 1.0),
+//             Port {
+//                 is_output: false,
+//                 port_id: 0
+//             }
+//         ));
+//         parent.spawn((
+//             Sprite {
+//                 image: textures.port.clone(),
+//                 color: Color::srgb(1.0, 0.3, 0.3),
+//                 custom_size: Some(Vec2::splat(10.0)),
+//                 ..default()
+//             },
+//             Transform::from_xyz(-48.0, -16.0, 1.0),
+//             Port {
+//                 is_output: false,
+//                 port_id: 1
+//             },
+//         ));
+//         parent.spawn((
+//             Sprite {
+//                 image: textures.port.clone(),
+//                 color: Color::srgb(1.0, 0.3, 0.3),
+//                 custom_size: Some(Vec2::splat(10.0)),
+//                 ..default()
+//             },
+//             Transform::from_xyz(48.0, 0.0, 1.0),
+//             Port {
+//                 is_output: true,
+//                 port_id: 0
+//             },
+//         ));
+//     });
+// }
 
 //spawns a stable block, or a block that can't be moved
 pub fn spawn_stable_block(commands: &mut Commands, pos: Vec3, texture: Handle<Image>) {
@@ -162,7 +162,9 @@ pub fn delete_on_right_click(
     windows: Query<&Window>, 
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &Transform, &GateId), With<Draggable>>,
+    wires: Query<(Entity, &Wire)>,
     mut active_circuit: ResMut<ActiveCircuit>,
+    
 ) {
     // If mouse is not right clicking, ignore
     if !mouse.just_pressed(MouseButton::Right) {
@@ -181,9 +183,20 @@ pub fn delete_on_right_click(
 
         // If this entity is the closest to the mouse, delete it
         if dist < 50.0 {
+
+            // Delete connected wires
+            // TODO: FIX, CURRENTLY DOES NOT WORK AS INTENDED
+            for (wire_entity, wire) in &wires {
+                if wire.from == entity || wire.to == entity {
+                    commands.entity(wire_entity).despawn();
+                    break;
+                }
+            }
+            
+            // Delete the gate
             commands.entity(entity).despawn();
             active_circuit.0.remove_gate(gate_id.0);
-            break; // delete only one
+            break; // We only need to delete one!
         }
     }
 }
@@ -382,7 +395,7 @@ pub fn user_interface(
                     
                 }
 
-                if ui // NOR (placeholder)
+                if ui //
                     .add_sized([60.0, 30.0], egui::Button::new("NOR"))
                     .clicked()
                 {
@@ -407,7 +420,7 @@ pub fn user_interface(
 
                 }
 
-                if ui // AND (placeholder)
+                if ui
                     .add_sized([60.0, 30.0], egui::Button::new("AND"))
                     .clicked()
                 {
@@ -431,13 +444,85 @@ pub fn user_interface(
 
                 }
 
-                if ui // OR (placeholder)
+                if ui
                     .add_sized([60.0, 30.0], egui::Button::new("OR"))
                     .clicked()
                 {
                     message_writer.write(SpawnGateEvent {
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::OR,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::OR);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
+
+                }
+
+                if ui
+                    .add_sized([60.0, 30.0], egui::Button::new("XOR"))
+                    .clicked()
+                {
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::XOR,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::OR);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
+
+                }
+
+                if ui
+                    .add_sized([60.0, 30.0], egui::Button::new("XNOR"))
+                    .clicked()
+                {
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::XNOR,
+                    });
+
+                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
+                    // current_level.add_gate(GateType::OR);
+
+                    // for i in 0..current_level.gates.len() {
+                    //     println!("{:?}", current_level.gates[i]);
+                    // }
+
+                    // // Print the current graph
+                    // println!("/////////");
+                    // println!("current graph:");
+                    // println!("{:?}", current_level.graph);
+                    // println!("/////////");
+
+                }
+
+                if ui
+                    .add_sized([60.0, 30.0], egui::Button::new("NOT"))
+                    .clicked()
+                {
+                    message_writer.write(SpawnGateEvent {
+                        position: Vec3::new(-80.0, 0.0, 0.0),
+                        gate_type: GateType::NOT,
                     });
 
                     // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
@@ -601,54 +686,103 @@ pub fn handle_spawn_gate(
         // Get ID of newly created gate
         let gate_id = active_circuit.0.gates.last().unwrap().id;
 
+        // Get the type of gate to set the texture to
+        
+        let texture = match event.gate_type.clone() {
+            GateType::NAND => textures.nand_gate.clone(),
+            GateType::AND => textures.and_gate.clone(),
+            GateType::OR => textures.or_gate.clone(),
+            GateType::NOR => textures.nor_gate.clone(),
+            GateType::NOT => textures.not_gate.clone(),
+            GateType::XOR => textures.xor_gate.clone(),
+            GateType::XNOR => textures.xnor_gate.clone(),
+        };
+
         // Spawn visual using BlockBundle
-        commands.spawn(BlockBundle::new(
-            event.position,
-            textures.gate.clone(),
-            gate_id,
-        ))
-        .with_children(|parent| {
-        // First port
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(-48.0, 16.0, 1.0),
-            Port {
-                is_output: false,
-                port_id: 0
-            }
-        ));
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(-48.0, -16.0, 1.0),
-            Port {
-                is_output: false,
-                port_id: 1
-            },
-        ));
-        parent.spawn((
-            Sprite {
-                image: textures.port.clone(),
-                color: Color::srgb(1.0, 0.3, 0.3),
-                custom_size: Some(Vec2::splat(10.0)),
-                ..default()
-            },
-            Transform::from_xyz(48.0, 0.0, 1.0),
-            Port {
-                is_output: true,
-                port_id: 0
-            },
-        ));
-    });
+        // If not gate, do different spawn since number of children is one, not two
+        if event.gate_type.clone() == GateType::NOT {
+            commands.spawn(BlockBundle::new(
+                event.position,
+                texture,
+                gate_id,
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        image: textures.port.clone(),
+                        color: Color::srgb(1.0, 0.3, 0.3),
+                        custom_size: Some(Vec2::splat(10.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(-48.0, 0.0, 1.0),
+                    Port {
+                        is_output: false,
+                        port_id: 0
+                    },
+                ));
+                parent.spawn((
+                    Sprite {
+                        image: textures.port.clone(),
+                        color: Color::srgb(1.0, 0.3, 0.3),
+                        custom_size: Some(Vec2::splat(10.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(48.0, 0.0, 1.0),
+                    Port {
+                        is_output: true,
+                        port_id: 0
+                    },
+                ));
+            });
+        } else {
+            commands.spawn(BlockBundle::new(
+                event.position,
+                texture,
+                gate_id,
+            ))
+            .with_children(|parent| {
+            // First port
+                parent.spawn((
+                    Sprite {
+                        image: textures.port.clone(),
+                        color: Color::srgb(1.0, 0.3, 0.3),
+                        custom_size: Some(Vec2::splat(10.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(-48.0, 16.0, 1.0),
+                    Port {
+                        is_output: false,
+                        port_id: 0
+                    }
+                ));
+                parent.spawn((
+                    Sprite {
+                        image: textures.port.clone(),
+                        color: Color::srgb(1.0, 0.3, 0.3),
+                        custom_size: Some(Vec2::splat(10.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(-48.0, -16.0, 1.0),
+                    Port {
+                        is_output: false,
+                        port_id: 1
+                    },
+                ));
+                parent.spawn((
+                    Sprite {
+                        image: textures.port.clone(),
+                        color: Color::srgb(1.0, 0.3, 0.3),
+                        custom_size: Some(Vec2::splat(10.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(48.0, 0.0, 1.0),
+                    Port {
+                        is_output: true,
+                        port_id: 0
+                    },
+                ));
+            });
+        }
 
         // match event.gate_type {
         //     GateType::NAND => {

@@ -7,7 +7,7 @@ pub static GLOBAL_ID: Mutex<i32> = Mutex::new(0);
 
 //all the type of gates
 #[derive(Component)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GateType {
     NAND,
     NOR,
