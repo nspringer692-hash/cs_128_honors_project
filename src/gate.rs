@@ -1,7 +1,8 @@
 use std::sync::{Mutex, OnceLock};
 use bevy::prelude::*;
 
-
+// The mutex below is used to identify the id for gates, blocks and really any part of a gate
+// that would be relevant
 pub static GLOBAL_ID: Mutex<i32> = Mutex::new(0);
 
 

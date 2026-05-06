@@ -599,6 +599,10 @@ pub fn handle_spawn_gate(
 
         // Add gate to backend
         active_circuit.0.add_gate(event.gate_type.clone());
+        // println!("/////////");
+        // println!("current graph:");
+        // println!("{:?}", active_circuit.0.graph);
+        // println!("/////////");
 
         // Get ID of newly created gate
         let gate_id = active_circuit.0.gates.last().unwrap().id;
@@ -719,6 +723,7 @@ pub fn connect_to_output(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &GlobalTransform, &Port)>,
+    mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
         return;
@@ -756,6 +761,14 @@ pub fn connect_to_output(
             // VALID CONNECTION
             println!("Valid connection found!");
 
+            // Logic behind connecting two gates together, in the current level.
+            let input_id = input_port.identifier as usize;
+            let output_id = port.identifier as usize;
+            active_circuit.0.connect_gates(input_id, output_id);
+            println!("/////////");
+            println!("current graph:");
+            println!("{:?}", active_circuit.0.graph);
+            println!("/////////");
             commands.spawn((
                 Wire {
                     from: entity,
