@@ -462,7 +462,7 @@ pub fn user_interface(
 //may be changed in the future
 // WIP
 pub fn button_system(
-    mut current_status: ResMut<CurrentStat>,
+    mut active_circuit: ResMut<ActiveCircuit>,
     mut input_focus: ResMut<InputFocus>,
     mut interaction_query: Query<
         (
@@ -488,11 +488,41 @@ pub fn button_system(
                 **text = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
                 *border_color = BorderColor::all(SANDY_BROWN);
-                current_status.input = !current_status.input;
-                if current_status.input {
-                    println!("1");
+                if active_circuit.0.check_connection() {
+                    let input_0 = active_circuit.0.evaluate(false, false);
+                    let input_1 = active_circuit.0.evaluate(true, false);
+                    let input_2 = active_circuit.0.evaluate(true, true);
+                    let input_3 = active_circuit.0.evaluate(false, true);
+                    let first_output ;
+                    let second_output;
+                    let third_output;
+                    let fourth_output;
+                    if input_0 == true {
+                        first_output = 1;
+                    } else {
+                        first_output = 0;
+                    }
+                    if input_1 == true {
+                        second_output = 1;
+                    } else {
+                        second_output = 0;
+                    }
+                    if input_2 == true {
+                        third_output = 1;
+                    } else {
+                        third_output = 0;
+                    }
+                    if input_3 == true {
+                        fourth_output = 1;
+                    } else {
+                        fourth_output = 0;
+                    }
+                    println!("0 and 0 input leads to {first_output} as the output");
+                    println!("1 and 0 input leads to {second_output} as the output");
+                    println!("1 and 1 input leads to {third_output} as the output");
+                    println!("0 and 1 input leads to {fourth_output} as the output");
                 } else {
-                    println!("0");
+                    println!("the inputs and outputs aren't correctly connected!");
                 }
 
 
@@ -798,7 +828,9 @@ pub fn connect_to_output(
                 Transform::default(),
                 GlobalTransform::default(),
             ));
-
+            if active_circuit.0.check_connection() {
+                println!("the gates are connected!");
+            }
             println!("Connected {:?} -> {:?}", entity, input_entity);
 
             break;

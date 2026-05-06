@@ -2,7 +2,7 @@ use std::sync::{Mutex};
 use bevy::prelude::*;
 
 // The mutex below is used to identify the id for gates, blocks and really any part of a gate
-// that would be relevant
+// that would be relevant, so that the gates can be identified by by the global id.
 pub static GLOBAL_ID: Mutex<i32> = Mutex::new(0);
 
 
@@ -26,15 +26,13 @@ pub enum GateType {
 #[derive(Debug)]
 pub struct Gate {
     pub kind: GateType,
-    pub input_states: Vec<bool>,
-    pub output: bool,
     pub id: i32,
 }
 
 
 impl Gate {
     //create a new gete, this can be used when a gate is dragged into the "field"
-    pub fn new(kind: GateType, input_amount: usize) -> Self {
+    pub fn new(kind: GateType) -> Self {
         let id = {
             let mut guard = GLOBAL_ID.lock().unwrap();
             let current = *guard;
@@ -43,8 +41,6 @@ impl Gate {
         };
         Self {
             kind,
-            input_states: vec![false; input_amount],
-            output: false,
             id,
         }
     }
