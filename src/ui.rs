@@ -479,10 +479,14 @@ pub fn button_system(
                 *color = PRESSED_BUTTON.into();
                 *border_color = BorderColor::all(SANDY_BROWN);
                 if active_circuit.0.check_connection() {
-                    let input_0 = active_circuit.0.evaluate(false);
-                    let input_1 = active_circuit.0.evaluate(true);
+                    let input_0 = active_circuit.0.evaluate(false, false);
+                    let input_1 = active_circuit.0.evaluate(true, false);
+                    let input_2 = active_circuit.0.evaluate(true, true);
+                    let input_3 = active_circuit.0.evaluate(false, true);
                     let first_output ;
                     let second_output;
+                    let third_output;
+                    let fourth_output;
                     if input_0 == true {
                         first_output = 1;
                     } else {
@@ -493,8 +497,20 @@ pub fn button_system(
                     } else {
                         second_output = 0;
                     }
-                    println!("0 input leads to {first_output} as the output");
-                    println!("1 input leads to {second_output} as the output");
+                    if input_2 == true {
+                        third_output = 1;
+                    } else {
+                        third_output = 0;
+                    }
+                    if input_3 == true {
+                        fourth_output = 1;
+                    } else {
+                        fourth_output = 0;
+                    }
+                    println!("0 and 0 input leads to {first_output} as the output");
+                    println!("1 and 0 input leads to {second_output} as the output");
+                    println!("1 and 1 input leads to {third_output} as the output");
+                    println!("0 and 1 input leads to {fourth_output} as the output");
                 } else {
                     println!("the inputs and outputs aren't correctly connected!");
                 }

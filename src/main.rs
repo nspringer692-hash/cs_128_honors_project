@@ -81,7 +81,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, textures: ResMu
     commands.spawn(Camera2d);
     commands.spawn(button(&asset_server, 450.0, 320.0, 125, 60));
     spawn_grid(&mut commands);
-    spawn_board_port(&mut commands, Vec3::new(-400.0, 0.0, 0.0), &textures, true, 10000, 0);
+    spawn_board_port(&mut commands, Vec3::new(-400.0, -50.0, 0.0), &textures, true, 10000, 0);
+    spawn_board_port(&mut commands, Vec3::new(-400.0, 50.0, 0.0), &textures, true, 10002, 0);
     spawn_board_port(&mut commands, Vec3::new(400.0, 0.0, 0.0), &textures, false, 10001, 1);
 }
 

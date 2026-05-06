@@ -139,10 +139,14 @@ impl Circuit {
         }
         let mut to_check: Vec<usize> = vec![10001 as usize];
         let mut visited: Vec<usize> = Vec::new();
+        let mut inputs = 0;
         while let Some(current) = to_check.pop() {
             // checking to see if the value is the input (id of 10000)
-            if current == 10000 as usize {
-                return true;
+            if current == 10000 as usize || current == 10002 as usize {
+                inputs += 1;
+                if inputs == 2 {
+                    return true;
+                }
             }
 
             if visited.contains(&current) {
@@ -169,10 +173,11 @@ impl Circuit {
 
     // essentially this function is the one that has the full logic of the gates and this is used to determine
     // what the output is when the input is put in as 0 or 1, using the logic for each gate to determine this
-    pub fn evaluate(&self, input: bool) -> bool {
+    pub fn evaluate(&self, input: bool, input2: bool) -> bool {
         let mut values: HashMap<usize, bool> = HashMap::new();
         values.insert(10000, input);
-        let mut queue: Vec<usize> = vec![10000];
+        values.insert(10002, input2);
+        let mut queue: Vec<usize> = vec![10000, 10002];
 
         // essentially this function uses a sorta-topological to test the logic of the current gates
         //going throught the gate structure until reaching the output id, then returning that said id
