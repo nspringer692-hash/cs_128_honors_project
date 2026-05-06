@@ -71,9 +71,18 @@ impl Circuit {
                 break;
             }
         }
+        for i in 0..self.graph.len() {
+            for j in 0..self.graph[i].len() {
+                if self.graph[i][j] == Some(get_id as usize) {
+                    self.graph[i][j] = None;
+                }
+            }
+        }
     }
 
-    // when two gates are connected, this function is to be used (not tested yet)
+    // when two gates are connected, this function is to be used
+    // will also delete connections when a gate is deleted that is also
+    // connected with wires to other gates
     pub fn connect_gates(&mut self, from_id: usize, to_id: usize) {
         for i in 0..self.graph.len() {
             if self.graph[i][0] == Some(from_id) {
@@ -85,6 +94,17 @@ impl Circuit {
                 }
             }
         }
+    }
+
+    pub fn has_entry(&self) -> bool {
+        for i in 0..self.graph.len() {
+            for j in 0..self.graph[i].len() {
+                if self.graph[i][j] == Some(10000) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
