@@ -43,7 +43,7 @@ use circuit::*;
 // Overall startup, creating the app, running throught the assets and running the program.
 fn main() {
     App::new() // Create new app
-    .insert_resource(ActiveCircuit(crate::circuit::Circuit::new(0, 0)))
+    .insert_resource(ActiveCircuit(crate::circuit::Circuit::new(0, 1)))
     .insert_resource(DragState::default()) // Create new global resource to track drag state
     .insert_resource(PopupState::default()) // Create new global resource for tracking popup
     .insert_resource(CurrentStat {

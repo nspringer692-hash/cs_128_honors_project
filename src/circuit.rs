@@ -1,6 +1,5 @@
 use bevy::{prelude::*};
 use crate::gate::{Gate, GateType};
-
 //this is the actual graph, with each gate being stated in the gates vector and the graph being the actual was to find run through the values
 #[derive(Component)]
 pub struct Circuit {
@@ -15,9 +14,11 @@ impl Circuit {
     // create a new circuit, probably used for each level
     // this essentially stores all the information the level needs to know, the inputs, the connections, and if the level is passed or not
     pub fn new(num_inputs: u32, size: usize) -> Self {
+        let mut graphing = vec![vec![None; 8]; size];
+        graphing[0][0] = Some(10001);
         Self {
             gates: Vec::with_capacity(size),
-            graph: vec![vec![None; size]; size],
+            graph: graphing,
             num_inputs,
         }
     }
@@ -96,15 +97,43 @@ impl Circuit {
         }
     }
 
-    pub fn has_entry(&self) -> bool {
-        for i in 0..self.graph.len() {
-            for j in 0..self.graph[i].len() {
-                if self.graph[i][j] == Some(10000) {
-                    return true;
+    fn find_row(&self, node_id: usize) -> Option<&Vec<Option<usize>>> {
+        for row in &self.graph {
+            if row[0] == Some(node_id) {
+                return Some(row);
+            }
+        }
+        None
+    }
+
+
+
+    pub fn check_connection(&mut self) -> bool {
+        let mut to_check: Vec<usize> = vec![10001 as usize];
+        let mut visited: Vec<usize> = Vec::new();
+        while let Some(current) = to_check.pop() {
+            if current == 10000 as usize {
+                return true;
+            }
+
+            if visited.contains(&current) {
+                continue;
+            }
+            visited.push(current);
+
+            if let Some(row) = self.find_row(current) {
+                for cell in row.iter().skip(1) {
+                    if let Some(dep) = cell {
+                        if !visited.contains(dep) {
+                            to_check.push(*dep);
+                        }
+                    }
                 }
             }
         }
+
         false
+
     }
 }
 

@@ -775,10 +775,10 @@ pub fn connect_to_output(
             let input_id = input_port.identifier as usize;
             let output_id = port.identifier as usize;
             active_circuit.0.connect_gates(input_id, output_id);
-            println!("/////////");
-            println!("current graph:");
-            println!("{:?}", active_circuit.0.graph);
-            println!("/////////");
+            // println!("/////////");
+            // println!("current graph:");
+            // println!("{:?}", active_circuit.0.graph);
+            // println!("/////////");
             commands.spawn((
                 Wire {
                     from: entity,
@@ -792,7 +792,9 @@ pub fn connect_to_output(
                 Transform::default(),
                 GlobalTransform::default(),
             ));
-
+            if active_circuit.0.check_connection() {
+                println!("the gates are connected!");
+            }
             println!("Connected {:?} -> {:?}", entity, input_entity);
 
             break;
