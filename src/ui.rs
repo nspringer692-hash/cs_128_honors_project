@@ -55,6 +55,9 @@ const GRID_SIZE: f32 = 16.0;
     "Give me access to this data when the system runs"
 */
 
+
+/// bevy egui documentation found at https://github.com/vladbat00/bevy_egui
+
 /// spawn_grid: spawn a series of grey lines across the play space every 16 coordinate points x and y
 
 /// https://docs.rs/bevy/latest/bevy/prelude/struct.Commands.html
@@ -329,6 +332,31 @@ pub fn user_interface(
                 
 
                 ui.label("Editor Mode"); // Set header as Editor Mode
+
+                // Create space between label to create function preview
+                ui.allocate_space(egui::Vec2::new(1.0, 100.0));
+
+                ui.label("Level Instructions:");
+                ui.label("Lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum");
+
+                ui.label("The truth table for PLACEHOLDER is:");
+                ui.label("A  B  |  F");
+                ui.label("-----------");
+                ui.label("0  0  |  X");
+                ui.label("0  1  |  X");
+                ui.label("1  0  |  X");
+                ui.label("1  1  |  X");
+
+                ui.allocate_space(egui::Vec2::new(1.0, 100.0));
+
+                // TODO: ADD FUNCTION PREVIEW
+                ui.label("Function preview:");
+                ui.label("A  B  |  F");
+                ui.label("-----------");
+                ui.label("0  0  |  X");
+                ui.label("0  1  |  X");
+                ui.label("1  0  |  X");
+                ui.label("1  1  |  X");
             });
 
             egui::TopBottomPanel::top("Header").show(ctx, |ui| {
@@ -490,37 +518,18 @@ pub fn button_system(
                 *border_color = BorderColor::all(SANDY_BROWN);
                 if active_circuit.0.check_connection() {
                     let input_0 = active_circuit.0.evaluate(false, false);
-                    let input_1 = active_circuit.0.evaluate(true, false);
-                    let input_2 = active_circuit.0.evaluate(true, true);
-                    let input_3 = active_circuit.0.evaluate(false, true);
-                    let first_output ;
-                    let second_output;
-                    let third_output;
-                    let fourth_output;
-                    if input_0 == true {
-                        first_output = 1;
-                    } else {
-                        first_output = 0;
-                    }
-                    if input_1 == true {
-                        second_output = 1;
-                    } else {
-                        second_output = 0;
-                    }
-                    if input_2 == true {
-                        third_output = 1;
-                    } else {
-                        third_output = 0;
-                    }
-                    if input_3 == true {
-                        fourth_output = 1;
-                    } else {
-                        fourth_output = 0;
-                    }
+                    let input_1 = active_circuit.0.evaluate(false, true);
+                    let input_2 = active_circuit.0.evaluate(true, false);
+                    let input_3 = active_circuit.0.evaluate(true, true);
+                    let first_output = if input_0 {1} else {0};
+                    let second_output= if input_1 {1} else {0};
+                    let third_output = if input_2 {1} else {0};
+                    let fourth_output = if input_3 {1} else {0};
+
                     println!("0 and 0 input leads to {first_output} as the output");
-                    println!("1 and 0 input leads to {second_output} as the output");
-                    println!("1 and 1 input leads to {third_output} as the output");
-                    println!("0 and 1 input leads to {fourth_output} as the output");
+                    println!("0 and 1 input leads to {second_output} as the output");
+                    println!("1 and 0 input leads to {third_output} as the output");
+                    println!("1 and 1 input leads to {fourth_output} as the output");
                 } else {
                     println!("the inputs and outputs aren't correctly connected!");
                 }
