@@ -70,6 +70,7 @@ fn main() {
         select_input_port,
         connect_to_output.after(select_input_port),
         update_wires,
+        cleanup_wires,
     ))
     .add_message::<SpawnGateEvent>()
     .run();

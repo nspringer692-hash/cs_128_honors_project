@@ -158,6 +158,7 @@ pub fn delete_on_right_click(
             
             // Delete the gate and its children
             commands.entity(entity).despawn();
+
             // Remove this gate from the graph
             active_circuit.0.remove_gate(gate_id.0);
             break; // We only need to delete one!
@@ -352,21 +353,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::NAND,
                     });
-
-                    // //spawning in the block and adding the gate to the circuit, continued for all gate types
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::NAND);
-                    
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-                    
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-                    
                 }
 
                 if ui //
@@ -378,20 +364,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::NOR,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::NOR);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
 
                 if ui
@@ -402,20 +374,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::AND,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::NAND);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
 
                 if ui
@@ -426,20 +384,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::OR,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::OR);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
 
                 if ui
@@ -450,20 +394,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::XOR,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::OR);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
 
                 if ui
@@ -474,20 +404,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::XNOR,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::OR);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
 
                 if ui
@@ -498,20 +414,6 @@ pub fn user_interface(
                         position: Vec3::new(-80.0, 0.0, 0.0),
                         gate_type: GateType::NOT,
                     });
-
-                    // commands.spawn(BlockBundle::new(pos, gate_texture.texture.clone(), global));
-                    // current_level.add_gate(GateType::OR);
-
-                    // for i in 0..current_level.gates.len() {
-                    //     println!("{:?}", current_level.gates[i]);
-                    // }
-
-                    // // Print the current graph
-                    // println!("/////////");
-                    // println!("current graph:");
-                    // println!("{:?}", current_level.graph);
-                    // println!("/////////");
-
                 }
             });
         }
@@ -882,32 +784,14 @@ pub fn connect_to_output(
                     from: entity,
                     to: input_entity,
                 },
+                Sprite {
+                    color: Color::WHITE,
+                    custom_size: Some(Vec2::new(1.0, 1.0)),
+                    ..default()
+                },
                 Transform::default(),
                 GlobalTransform::default(),
-            ))
-            .with_children(|parent| {
-
-                // WIP: MANHATTAN ROUTING
-                // // horizontal segment
-                // parent.spawn((
-                //     Sprite {
-                //         color: Color::WHITE,
-                //         custom_size: Some(Vec2::new(10.0, 2.0)),
-                //         ..default()
-                //     },
-                //     Transform::default(),
-                // ));
-
-                // Create the wire as the child of the Wire object
-                parent.spawn((
-                    Sprite {
-                        color: Color::WHITE,
-                        custom_size: Some(Vec2::new(1.0, 1.0)),
-                        ..default()
-                    },
-                    Transform::default(),
-                ));
-            });
+            ));
 
             println!("Connected {:?} -> {:?}", entity, input_entity);
 
@@ -971,4 +855,22 @@ pub fn spawn_board_port(
             identifier,
         },
     ));
+}
+
+pub fn cleanup_wires(
+    mut commands: Commands,
+    wires: Query<(Entity, &Wire)>,
+    ports: Query<Entity, With<Port>>,
+) {
+    let alive_ports: std::collections::HashSet<Entity> =
+        ports.iter().collect();
+
+    for (wire_entity, wire) in &wires {
+        let from_alive = alive_ports.contains(&wire.from);
+        let to_alive = alive_ports.contains(&wire.to);
+
+        if !from_alive || !to_alive {
+            commands.entity(wire_entity).despawn();
+        }
+    }
 }
