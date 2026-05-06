@@ -96,7 +96,7 @@ impl Circuit {
             }
         }
     }
-
+    // helper for check_connection, just checks to seee if a value is in the row given with the id
     fn find_row(&self, node_id: usize) -> Option<&Vec<Option<usize>>> {
         for row in &self.graph {
             if row[0] == Some(node_id) {
@@ -106,12 +106,52 @@ impl Circuit {
         None
     }
 
+    // fn find_row_id(&self, node_id: usize) -> i32 {
+    //     let mut curr = 0;
+    //     for row in &self.graph {
+    //         if row[0] == Some(node_id) {
+    //             return curr;
+    //         }
+    //         curr += 1;
+    //     }
+    //     -1
+    // }
 
+    pub fn confirm_output(&self) -> bool {
+        if &self.graph[0][1] == &None || &self.graph[0][2] != &None {
+            return false;
+        }
+        true
+    }
 
+    pub fn check_valid_connections(&self) -> bool {
+        let mut correct = 0;
+        for gate in 0..self.gates.len() {
+            if self.gates[gate].kind == GateType::NOT {
+                if self.graph[gate + 1][1] != None && self.graph[gate + 1][2] == None {
+                    correct += 1;
+                }
+            } else {
+                if self.graph[gate + 1][1] != None && self.graph[gate + 1][2] != None && self.graph[gate + 1][3] == None {
+                    correct += 1;
+                }
+            }
+        }
+        return correct as usize == self.gates.len();
+    }
+    // checks to see if the input and the output are connected in some way, so that the user can test to see the
+    // program output (with a DFS)
     pub fn check_connection(&mut self) -> bool {
+        if self.confirm_output() == false {
+            return false;
+        }
+        if self.check_valid_connections() == false {
+            return false;
+        }
         let mut to_check: Vec<usize> = vec![10001 as usize];
         let mut visited: Vec<usize> = Vec::new();
         while let Some(current) = to_check.pop() {
+            // checking to see if the value is the input (id of 10000)
             if current == 10000 as usize {
                 return true;
             }
@@ -120,8 +160,10 @@ impl Circuit {
                 continue;
             }
             visited.push(current);
-
+            
+            // get to the row that "current" has and iterate through it 
             if let Some(row) = self.find_row(current) {
+                // this iteration basically loops through all the values that need to be searched through next
                 for cell in row.iter().skip(1) {
                     if let Some(dep) = cell {
                         if !visited.contains(dep) {
