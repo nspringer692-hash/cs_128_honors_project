@@ -23,12 +23,6 @@ pub struct CurrentStat {
     pub output: i32,
 }
 
-// Determine whether to show the help popup or not
-#[derive(Resource, Default)]
-pub struct PopupState {
-    show_popup : bool,
-}
-
 // Pass a message to the gate spawning function and spawn a certain function depending on gate_type
 #[derive(Message)]
 pub struct SpawnGateEvent {
@@ -54,6 +48,7 @@ const GRID_SIZE: f32 = 16.0;
     This is important to know since function parameters are basically:
     "Give me access to this data when the system runs"
 
+    
     Entities are IDs representing objects in the world (gates, ports, wires)
     Components are data attached to entities
     Systems are functions that operate on data
@@ -151,7 +146,8 @@ pub fn delete_on_right_click(
             commands.entity(entity).despawn();
 
             // Remove this gate from the graph
-            active_circuit.0.remove_gate(gate_id.0);
+            let idx = active_circuit.active;
+            active_circuit.circuits[idx].remove_gate(gate_id.0);
             break; // We only need to delete one!
         }
     }
@@ -287,11 +283,14 @@ pub fn end_drag_system(
 /// 'message_writer' - Create a message for the handle_spawn_gate to read to determine what gate to spawn
 /// 'popup' - Handle whether the help and tutorial popup should exist or not
 pub fn user_interface(
+    mut commands: Commands,  
     mut contexts: EguiContexts, // Give access to egui to draw UI
     state: Res<State<GameState>>, // Read what state the game is currently in
     mut next_state: ResMut<NextState<GameState>>, // What state to change to next frame?
     mut message_writer: MessageWriter<SpawnGateEvent>,
-    mut popup: ResMut<PopupState>,
+    mut active_circuit: ResMut<ActiveCircuit>,
+    gate_query: Query<Entity, With<GateId>>,
+    wire_query: Query<Entity, With<Wire>>,
     preview: Res<CircuitPreview>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?; // Get access to bevy_egui's internal state
@@ -331,6 +330,9 @@ pub fn user_interface(
         }
 
         GameState::Editor => { // If editor, show editor
+            let all_gates: Vec<Entity> = gate_query.iter().collect();
+            let all_wires: Vec<Entity> = wire_query.iter().collect();
+
             egui::SidePanel::left("Panel").show(ctx, |ui| {
                 if ui.button("Back to Menu").clicked() { // Go back to main menu
                     next_state.set(GameState::MainMenu);
@@ -387,17 +389,17 @@ pub fn user_interface(
                         next_state.set(GameState::MainMenu);
                     }
 
-                     if ui.button("Help").clicked() { // Go back to main menu
-                        popup.show_popup = true;
-                    }
+                    if ui.button("To the Next Level").clicked() {
+                        let idx = active_circuit.active;
 
-                    if popup.show_popup { // No need to account for a close button since bevy egui includes that in windows!
-                        egui::Window::new("Help")
-                        .vscroll(true)
-                        .open(&mut popup.show_popup)
-                        .show(ctx, |ui| {
-                            ui.label("This is a placeholder");
-                        });
+                        for entity in &all_gates {
+                            commands.entity(*entity).despawn();
+                        }
+                        for entity in &all_wires {
+                            commands.entity(*entity).despawn();
+                        }
+
+                        active_circuit.circuits[idx] = crate::circuit::Circuit::new(2, 1);
                     }
                 });
             });
@@ -535,16 +537,36 @@ pub fn button_system(
                 **text = "Press".to_string();
                 *color = PRESSED_BUTTON.into();
                 *border_color = BorderColor::all(SANDY_BROWN);
-                if active_circuit.0.check_connection() {
-                    let input_0 = active_circuit.0.evaluate(false, false);
-                    let input_1 = active_circuit.0.evaluate(false, true);
-                    let input_2 = active_circuit.0.evaluate(true, false);
-                    let input_3 = active_circuit.0.evaluate(true, true);
-                    let first_output = if input_0 {1} else {0};
-                    let second_output= if input_1 {1} else {0};
-                    let third_output = if input_2 {1} else {0};
-                    let fourth_output = if input_3 {1} else {0};
-
+                let idx = active_circuit.active;
+                if active_circuit.circuits[idx].check_connection() {
+                    let input_0 = active_circuit.circuits[idx].evaluate(false, false);
+                    let input_1 = active_circuit.circuits[idx].evaluate(false, true);
+                    let input_2 = active_circuit.circuits[idx].evaluate(true, false);
+                    let input_3 = active_circuit.circuits[idx].evaluate(true, true);
+                    let first_output ;
+                    let second_output;
+                    let third_output;
+                    let fourth_output;
+                    if input_0 == true {
+                        first_output = 1;
+                    } else {
+                        first_output = 0;
+                    }
+                    if input_1 == true {
+                        second_output = 1;
+                    } else {
+                        second_output = 0;
+                    }
+                    if input_2 == true {
+                        third_output = 1;
+                    } else {
+                        third_output = 0;
+                    }
+                    if input_3 == true {
+                        fourth_output = 1;
+                    } else {
+                        fourth_output = 0;
+                    }
                     println!("0 and 0 input leads to {first_output} as the output");
                     println!("0 and 1 input leads to {second_output} as the output");
                     println!("1 and 0 input leads to {third_output} as the output");
@@ -631,10 +653,11 @@ pub fn handle_spawn_gate(
     for event in events.read() {
 
         // Add gate to backend
-        active_circuit.0.add_gate(event.gate_type.clone());
+        let idx = active_circuit.active;
+        active_circuit.circuits[idx].add_gate(event.gate_type.clone());
 
         // Get ID of newly created gate
-        let gate_id = active_circuit.0.gates.last().unwrap().id;
+        let gate_id = active_circuit.circuits[idx].gates.last().unwrap().id;
 
         // Get the type of gate to set the texture to
         let texture = match event.gate_type.clone() {
@@ -849,10 +872,11 @@ pub fn connect_to_output(
             // Logic behind connecting two gates together, in the current level.
             let input_id = input_port.identifier as usize;
             let output_id = port.identifier as usize;
-            active_circuit.0.connect_gates(input_id, output_id);
+            let idx = active_circuit.active;
+            active_circuit.circuits[idx].connect_gates(input_id, output_id);
             println!("/////////");
             println!("current graph:");
-            println!("{:?}", active_circuit.0.graph);
+            println!("{:?}", active_circuit.circuits[idx].graph);
             println!("/////////");
             commands.spawn((
                 Wire {
@@ -867,7 +891,7 @@ pub fn connect_to_output(
                 Transform::default(),
                 GlobalTransform::default(),
             ));
-            if active_circuit.0.check_connection() {
+            if active_circuit.circuits[idx].check_connection() {
                 println!("the gates are connected!");
             }
             println!("Connected {:?} -> {:?}", entity, input_entity);
