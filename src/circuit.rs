@@ -253,4 +253,7 @@ impl Circuit {
 // this is a wrapper, specifically used for the circuit struct and helps to distinguish
 // the levels and which one is currently active
 #[derive(Resource)]
-pub struct ActiveCircuit(pub crate::circuit::Circuit);
+pub struct ActiveCircuit {
+    pub circuits: Vec<crate::circuit::Circuit>,
+    pub active: usize,
+}
