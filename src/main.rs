@@ -38,7 +38,6 @@ use components::*; // Access all components.rs functions
 
 // Get the backend functions
 use circuit::*;
-// use block::*;
 
 // Overall startup, creating the app, running throught the assets and running the program.
 fn main() {
@@ -51,6 +50,7 @@ fn main() {
         working_output: false,
         output: -1,
     })
+    .insert_resource(CircuitPreview::default())
     .insert_resource(ConnectionState::default()) // Create new global resource for the current
     .add_plugins(DefaultPlugins) // Plugins for Bevy game development
     .add_plugins(EguiPlugin::default()) // Plugins for Bevy egui
@@ -73,6 +73,7 @@ fn main() {
         cleanup_wires,
         lighten_on_hover,
         lighten_port_on_hover,
+        update_circuit_preview,
     ))
     .add_message::<SpawnGateEvent>()
     .run();

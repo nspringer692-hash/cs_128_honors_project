@@ -130,7 +130,7 @@ impl Circuit {
     }
     // checks to see if the input and the output are connected in some way, so that the user can test to see the
     // program output (with a DFS)
-    pub fn check_connection(&mut self) -> bool {
+    pub fn check_connection(&self) -> bool {
         if self.confirm_output() == false {
             return false;
         }

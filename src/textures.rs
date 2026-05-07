@@ -11,6 +11,9 @@ pub struct Textures {
     pub xnor_gate: Handle<Image>,
     pub port: Handle<Image>,
     pub wire: Handle<Image>,
+    pub output_a: Handle<Image>,
+    pub output_b: Handle<Image>,
+    pub input_f: Handle<Image>,
 }
 
 // Load the textures outside of setup
@@ -28,5 +31,8 @@ pub fn load_textures(
         xnor_gate: asset_server.load("textures/xnor.png"),
         port: asset_server.load("textures/input.png"),
         wire: asset_server.load("textures/connector.png"),
+        output_a: asset_server.load("textures/static_input_a.png"),
+        output_b: asset_server.load("textures/static_input_b.png"),
+        input_f: asset_server.load("textures/static_input_f.png"),
     });
 }

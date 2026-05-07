@@ -37,3 +37,15 @@ pub struct DragState {
 
 #[derive(Resource, Default)]
 pub struct ActiveLevel(pub Option<u32>);
+
+#[derive(Resource, Default)]
+pub struct CircuitPreview {
+    pub outputs: Vec<bool>,
+}
+
+#[derive(Clone)]
+pub struct TestCase {
+    pub a: bool,
+    pub b: bool,
+    pub expected: bool,
+}

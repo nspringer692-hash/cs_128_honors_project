@@ -50,9 +50,15 @@ pub enum GameState {
 const GRID_SIZE: f32 = 16.0;
 
 /* 
-    Bevy runs on an ECS system
+    Bevy runs on an ECS system (entity component system)
     This is important to know since function parameters are basically:
     "Give me access to this data when the system runs"
+
+    Entities are IDs representing objects in the world (gates, ports, wires)
+    Components are data attached to entities
+    Systems are functions that operate on data
+    Resources are global resources that can be accessed by any system in the app
+
 */
 
 
@@ -286,9 +292,9 @@ pub fn user_interface(
     mut next_state: ResMut<NextState<GameState>>, // What state to change to next frame?
     mut message_writer: MessageWriter<SpawnGateEvent>,
     mut popup: ResMut<PopupState>,
+    preview: Res<CircuitPreview>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?; // Get access to bevy_egui's internal state
-
     match state.get() { // Depending on current state, show a certain window's contents
         GameState::MainMenu => { // If main menu, show main menu -> transition to other pages
             egui::CentralPanel::default().show(ctx, |ui| {
@@ -353,10 +359,25 @@ pub fn user_interface(
                 ui.label("Function preview:");
                 ui.label("A  B  |  F");
                 ui.label("-----------");
-                ui.label("0  0  |  X");
-                ui.label("0  1  |  X");
-                ui.label("1  0  |  X");
-                ui.label("1  1  |  X");
+
+                let fixed_inputs = [
+                    (0, 0),
+                    (0, 1),
+                    (1, 0),
+                    (1, 1),
+                ];
+
+                if preview.outputs.len() == 4 {
+                    for (i, (a, b)) in fixed_inputs.iter().enumerate() {
+                        let f = if preview.outputs[i] { 1 } else { 0 };
+
+                        ui.label(format!("{}  {}  |  {}", a, b, f));
+                    }
+                } else {
+                    for (a, b) in fixed_inputs {
+                        ui.label(format!("{}  {}  |  ?", a, b));
+                    }
+                }
             });
 
             egui::TopBottomPanel::top("Header").show(ctx, |ui| {
@@ -382,7 +403,7 @@ pub fn user_interface(
             });
             // Create new draggable window for user to add gates
             egui::Window::new("Components").show(ctx, |ui| {
-                // let mut current_level = crate::circuit::Circuit::new(0, 5);
+                // Disable certain buttons depending on level
                 if ui // NAND
                     .add_sized([60.0, 30.0], egui::Button::new("NAND"))
                     .clicked()
@@ -486,11 +507,9 @@ pub fn user_interface(
     Ok(())
 }
 
-//this button will initialize the input value, whether it is true (1) or false (0) and this will help with testing later
-//may be changed in the future
-// WIP
+/// Unused function...
 pub fn button_system(
-    mut active_circuit: ResMut<ActiveCircuit>,
+    active_circuit: ResMut<ActiveCircuit>,
     mut input_focus: ResMut<InputFocus>,
     mut interaction_query: Query<
         (
@@ -555,7 +574,7 @@ pub fn button_system(
     }
 }
 
-//use this function to make a button that can be placed in the x_pos, and set its size
+// Create a button
 pub fn button(asset_server: &AssetServer, x_pos: f32, y_pos: f32, width: u32, height: u32) -> impl Bundle {
     (
         Node {
@@ -778,6 +797,7 @@ pub fn connect_to_output(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
     query: Query<(Entity, &GlobalTransform, &Port)>,
+    wires: Query<&Wire>,
     mut active_circuit: ResMut<ActiveCircuit>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
@@ -793,6 +813,15 @@ pub fn connect_to_output(
     }
 
     let Some(input_entity) = state.selected_input else { return };
+
+    // BLOCK: if input already has a wire, reject new connection
+    for wire in &wires {
+        if wire.to == input_entity {
+            println!("Input already occupied");
+            state.selected_input = None;
+            return;
+        }
+    }
 
     let Some(cursor) = cursor_to_world(&windows, &cameras) else { return };
 
@@ -811,6 +840,7 @@ pub fn connect_to_output(
         if port.identifier == input_port.identifier {
             println!("needs to be different gate");
         }
+
         // Prevent connecting an input to an input
         if dist < 10.0 && port.is_output && port.identifier != input_port.identifier {
             // VALID CONNECTION
@@ -873,6 +903,15 @@ pub fn update_wires(
     }
 }
 
+/// select_input_port: Update selected input whenever the user left clicks on a port
+/// 
+/// # Arguments
+/// 'commands' - Modify world by despawning entities
+/// 'pos' - Store the x, y, and z position we want to create the board port in
+/// 'textures' - Access the textures in assets/textures/...
+/// 'is_output' - Determine what type of port to spawn
+/// 'identifier' - Determine what texture to use depending on identifier
+/// 'port_id' - Create port ID for this port, an unreachable number
 pub fn spawn_board_port(
     commands: &mut Commands,
     pos: Vec3,
@@ -902,8 +941,63 @@ pub fn spawn_board_port(
             identifier,
         },
     ));
+    // Spawn another object with the texture of the respective static thing
+    commands.spawn((
+        Sprite {
+            image: textures.port.clone(),
+            color: Color::srgb(0.4, 0.4, 0.4), // grey
+            custom_size: Some(Vec2::splat(10.0)),
+            ..default()
+        },
+        Transform::from_translation(snapped),
+        Port {
+            port_id,
+            is_output,
+            identifier,
+        },
+    ));
+
+    // Hard code the sprite next to the port
+    if is_output { // If true, must be A or B
+        if identifier == 10000 { // Must be A
+            // decorative label / icon next to it
+            commands.spawn((
+                Sprite {
+                    image: textures.output_a.clone(),
+                    custom_size: Some(Vec2::splat(64.0)),
+                    ..default()
+                },
+                Transform::from_translation(snapped + Vec3::new(-32.0, 0.0, 0.1)),
+            ));
+        } else { // Must be B
+            commands.spawn((
+                Sprite {
+                    image: textures.output_b.clone(),
+                    custom_size: Some(Vec2::splat(64.0)),
+                    ..default()
+                },
+                Transform::from_translation(snapped + Vec3::new(-32.0, 0.0, 0.1)),
+            ));
+        }
+    } else { // Must be F
+        println!("Spawning F");
+        commands.spawn((
+            Sprite {
+                image: textures.input_f.clone(),
+                custom_size: Some(Vec2::splat(64.0)),
+                ..default()
+            },
+           Transform::from_translation(snapped + Vec3::new(32.0, 0.0, 0.1)),
+        ));
+    }
 }
 
+/// cleanup_wires - Every frame, look through every wire and delete it if either to or from are missing
+/// 
+/// # Arguments
+/// 'commands' - Modify world by despawning entities
+/// 'wires' - Queue through every single wire in this frame
+/// 'ports' - Queue thorugh every single port in this frame
 pub fn cleanup_wires(
     mut commands: Commands,
     wires: Query<(Entity, &Wire)>,
@@ -922,7 +1016,13 @@ pub fn cleanup_wires(
     }
 }
 
-// Brighten up any gate whenever the mouse is on top of it
+/// lighten_on_hover - Detect when the mouse is hovering over a gate, then light it up until mouse is off
+/// # Arguments
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all draggable entities
+/// 
+/// This reuses a lot of delete_on_right_click code...
 pub fn lighten_on_hover(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -942,7 +1042,13 @@ pub fn lighten_on_hover(
     }
 }
 
-// Brighten up any port whenever the mouse is on top of it
+/// lighten_on_hover - Detect when the mouse is hovering over a gate, then light it up until mouse is off
+/// # Arguments
+/// 'windows' - Read over all windows to get cursor position on screen
+/// 'cameras' - Access screen coordinates
+/// 'query' - Access all draggable entities
+/// 
+/// This reuses a lot of delete_on_right_click code...
 pub fn lighten_port_on_hover(
     windows: Query<&Window>,
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -960,5 +1066,36 @@ pub fn lighten_port_on_hover(
         let hover = Color::srgb(0.7, 0.7, 0.7);
 
         sprite.color = if dist < 12.0 { hover } else { base };
+    }
+}
+
+/// lighten_on_hover - Detect when the mouse is hovering over a gate, then light it up until mouse is off
+/// # Arguments
+/// 'active_circuit' - Access the node graph
+/// 'preview' - Store a vector of outputs to use in a later function
+pub fn update_circuit_preview(
+    active_circuit: Res<ActiveCircuit>,
+    mut preview: ResMut<CircuitPreview>,
+) {
+    let circuit = &active_circuit.0;
+
+    // Clear old outputs
+    preview.outputs.clear();
+
+    // If circuit invalid, stop
+    if !circuit.check_connection() {
+        return;
+    }
+
+    let test_inputs = [
+        (false, false),
+        (false, true),
+        (true, false),
+        (true, true),
+    ];
+
+    for (a, b) in test_inputs {
+        let result = circuit.evaluate(a, b);
+        preview.outputs.push(result);
     }
 }
