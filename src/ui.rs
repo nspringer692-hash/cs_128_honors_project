@@ -37,6 +37,7 @@ pub enum GameState {
     MainMenu,
     Editor,
     Credits,
+    LevelSelect,
 }
 
 // Set the grid size to 16
@@ -276,6 +277,10 @@ pub fn end_drag_system(
 /// The beefy one
 /// user_interface: Handle windows and transitions and handle pressing buttons
 /// 
+/// Reference: https://github.com/vladbat00/bevy_egui
+/// This has a list of tutorials on how to use various elements of bevy_egui
+/// We used as reference many functions from the example WASM at https://vladbat00.github.io/bevy_egui/ui/
+/// 
 /// # Arguments
 /// 'contexts' - Give access to egui to draw UI
 /// 'state' - Read what state the game is currently in
@@ -307,10 +312,10 @@ pub fn user_interface(
                 ui.separator(); // Add strikethrough border
 
                 if ui // If Start Editor button pushed
-                    .add_sized([250.0, 80.0], egui::Button::new("Start Editor"))
+                    .add_sized([250.0, 80.0], egui::Button::new("Level Select"))
                     .clicked()
                 {
-                    next_state.set(GameState::Editor);
+                    next_state.set(GameState::LevelSelect);
                 }
 
                 if ui // If Credits button pushed
@@ -325,6 +330,54 @@ pub fn user_interface(
                     .clicked()
                 {
                     std::process::exit(0);
+                }
+            });
+        }
+
+        GameState::LevelSelect => {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                // LET'S MAKE THIS STUFF BEAUTIFUL
+                ui.label(
+                    egui::RichText::new("Level Select")
+                    .size(64.0)
+                    .strong()
+                );
+
+                ui.separator(); // Add strikethrough border
+
+                if ui // If Start Editor button pushed
+                    .add_sized([250.0, 80.0], egui::Button::new("Level 1"))
+                    .clicked()
+                {
+                    next_state.set(GameState::Editor);
+                }
+
+                if ui // If Credits button pushed
+                    .add_sized([250.0, 80.0], egui::Button::new("Level 2"))
+                    .clicked()
+                {
+                    next_state.set(GameState::Editor);
+                }
+
+                if ui // If Quit button pushed
+                    .add_sized([250.0, 80.0], egui::Button::new("Level 3"))
+                    .clicked()
+                {
+                    next_state.set(GameState::Editor);
+                }
+
+                if ui // If Quit button pushed
+                    .add_sized([250.0, 80.0], egui::Button::new("Level 4"))
+                    .clicked()
+                {
+                    next_state.set(GameState::Editor);
+                }
+
+                if ui // If Quit button pushed
+                    .add_sized([250.0, 80.0], egui::Button::new("Level 5"))
+                    .clicked()
+                {
+                    next_state.set(GameState::Editor);
                 }
             });
         }
@@ -345,19 +398,18 @@ pub fn user_interface(
                 ui.allocate_space(egui::Vec2::new(1.0, 100.0));
 
                 ui.label("Level Instructions:");
-                ui.label("Lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum");
+                ui.label("Create an AND gate using only NAND and NOT.");
 
-                ui.label("The truth table for PLACEHOLDER is:");
+                ui.label("The truth table for AND is:");
                 ui.label("A  B  |  F");
                 ui.label("-----------");
-                ui.label("0  0  |  X");
-                ui.label("0  1  |  X");
-                ui.label("1  0  |  X");
-                ui.label("1  1  |  X");
+                ui.label("0  0  |  0");
+                ui.label("0  1  |  0");
+                ui.label("1  0  |  0");
+                ui.label("1  1  |  1");
 
                 ui.allocate_space(egui::Vec2::new(1.0, 100.0));
 
-                // TODO: ADD FUNCTION PREVIEW
                 ui.label("Function preview:");
                 ui.label("A  B  |  F");
                 ui.label("-----------");
@@ -383,12 +435,12 @@ pub fn user_interface(
             });
 
             egui::TopBottomPanel::top("Header").show(ctx, |ui| {
-                // The top panel is often a good place for a menu bar:
                 egui::MenuBar::new().ui(ui, |ui| {
                     if ui.button("Back to Menu").clicked() { // Go back to main menu
                         next_state.set(GameState::MainMenu);
                     }
 
+                    // Go to next level
                     if ui.button("To the Next Level").clicked() {
                         let idx = active_circuit.active;
 
@@ -1093,7 +1145,7 @@ pub fn lighten_port_on_hover(
     }
 }
 
-/// lighten_on_hover - Detect when the mouse is hovering over a gate, then light it up until mouse is off
+/// update_circuit_preview - Create circuit preview based on current gate state
 /// # Arguments
 /// 'active_circuit' - Access the node graph
 /// 'preview' - Store a vector of outputs to use in a later function
@@ -1101,12 +1153,13 @@ pub fn update_circuit_preview(
     active_circuit: Res<ActiveCircuit>,
     mut preview: ResMut<CircuitPreview>,
 ) {
-    let circuit = &active_circuit.0;
+    let circuit = match active_circuit.circuits.get(active_circuit.active) {
+        Some(c) => c,
+        None => return,
+    };
 
-    // Clear old outputs
     preview.outputs.clear();
 
-    // If circuit invalid, stop
     if !circuit.check_connection() {
         return;
     }
